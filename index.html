@@ -1,0 +1,876 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex, nofollow"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Hive42 Web Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+/* Layout: one-page site with hash-routed subpages; experience = sticky filter bar above results */
+:root{
+  --bg:#F6F6F4; --surface:#FFFFFF; --ink:#262628; --muted:#62636A; --line:#E0DFDA;
+  --gold:#D3AF5E; --gold-ink:#8A6A1E; --gold-soft:#F6EEDC; --on-gold:#1E1709;
+  --logo-ink:#414142; --chip:#EFEEEA; --bar:#CFCDC6; --bar-child:#E7DCC2;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141416; --surface:#1C1C1F; --ink:#EDECE8; --muted:#A3A2A8; --line:#313136;
+  --gold:#D9B868; --gold-ink:#E2C27A; --gold-soft:#2E2818; --on-gold:#1E1709;
+  --logo-ink:#EDECE8; --chip:#26262A; --bar:#46464D; --bar-child:#4A4230; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141416; --surface:#1C1C1F; --ink:#EDECE8; --muted:#A3A2A8; --line:#313136;
+  --gold:#D9B868; --gold-ink:#E2C27A; --gold-soft:#2E2818; --on-gold:#1E1709;
+  --logo-ink:#EDECE8; --chip:#26262A; --bar:#46464D; --bar-child:#4A4230; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html:not(.internal) .int-only{display:none!important}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.55 var(--f-body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:20;background:var(--surface)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+a{color:var(--gold-ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+.eyebrow{font:500 12px/1 var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+button{font:inherit;color:inherit;cursor:pointer}
+.mk-gold{fill:var(--gold)} .wm-ink{fill:var(--logo-ink)}
+
+.proto{background:var(--gold-soft);border-bottom:1px solid var(--line);font-size:13px}
+.int-tgl{border:1px solid var(--gold-ink);background:transparent;color:var(--gold-ink);border-radius:999px;padding:2px 10px;font-size:12px}
+html.internal .int-tgl{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.proto .wrap{padding-block:8px;display:flex;gap:6px 16px;flex-wrap:wrap;justify-content:space-between}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:16px;padding-block:12px}
+.logo{display:flex;align-items:center;text-decoration:none}
+.logo svg{height:34px;width:auto}
+nav.main{display:flex;gap:18px;margin-left:auto;font-size:14px}
+nav.main a{color:var(--muted);text-decoration:none}
+nav.main a:hover{color:var(--ink)}
+nav.main a.active{color:var(--ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--gold);padding-bottom:4px}
+.lang{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;font:500 12px/1 var(--f-mono)}
+.lang button{background:none;border:0;padding:7px 9px;color:var(--muted)}
+.lang button[aria-pressed="true"]{background:var(--chip);color:var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:var(--on-gold);border:0;border-radius:8px;padding:10px 16px;font-weight:600;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--gold-ink);border:1.5px solid var(--gold)}
+.btn.ghost:hover{background:var(--gold-soft)}
+.btn:hover{filter:brightness(1.05)}
+@media (max-width:760px){nav.main{display:none}.lang{margin-left:auto}}
+
+.hero .wrap{display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;padding-block:48px 40px}
+.hero h1{font-size:clamp(28px,4.4vw,44px);line-height:1.1;max-width:22ch}
+.hero p{color:var(--muted);max-width:60ch;margin:16px 0 22px}
+.hero .ctas{display:flex;gap:10px;flex-wrap:wrap}
+.hero img{width:180px;height:180px;border-radius:50%;object-fit:cover;border:4px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
+.who{font:500 13px/1.4 var(--f-mono);color:var(--muted);margin-bottom:14px}
+.facts{display:flex;gap:28px;flex-wrap:wrap;margin-top:26px}
+.facts div{font-size:13px;color:var(--muted)}
+.facts b{display:block;font:700 22px/1.1 var(--f-display);color:var(--ink)}
+@media (max-width:700px){.hero .wrap{grid-template-columns:1fr}.hero img{width:120px;height:120px;order:-1}}
+/* default layout: photo centred against the headline (V0, V1) */
+@media (min-width:701px){html:not(.lv2):not(.lv3):not(.lv4) .hero .wrap>div{display:contents}
+ html:not(.lv2):not(.lv3):not(.lv4) .hero .wrap>div>*{grid-column:1}
+ html:not(.lv2):not(.lv3):not(.lv4) .hero .wrap{row-gap:0;align-items:start}
+ html:not(.lv2):not(.lv3):not(.lv4) .hero h1{grid-row:2}
+ html:not(.lv2):not(.lv3):not(.lv4) .hero img{grid-column:2;grid-row:2;align-self:center;transform:translateY(var(--h1shift,0px))}}
+
+section{padding-block:40px}
+section[id]{scroll-margin-top:60px}
+section > .wrap > header{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+section h2{font-size:clamp(22px,3vw,30px)}
+
+.svc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.svc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.svc-grid{grid-template-columns:1fr}}
+.svc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.svc h3{font-size:18px}
+.svc p{margin:0;color:var(--muted);font-size:14px;flex:1}
+.svc .count{font:500 12px/1 var(--f-mono);color:var(--muted)}
+.svc .links{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.svc .links a{font-weight:600}
+
+/* experience */
+#experience{background:var(--surface);border-block:1px solid var(--line)}
+.fbar-wrap{position:sticky;top:calc(env(safe-area-inset-top,0px) + 59px);z-index:10;background:var(--surface);padding-block:10px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fbtn{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 12px;font-size:14px;display:inline-flex;gap:6px;align-items:center}
+.fbtn[aria-expanded="true"]{border-color:var(--gold);background:var(--gold-soft)}
+.fbtn .sel{font:500 12px/1 var(--f-mono);color:var(--gold-ink)}
+.fbtn .car{font-size:10px;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:auto}
+.seg button{background:none;border:0;padding:7px 12px;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--chip);color:var(--ink);font-weight:600}
+.panel{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:14px;max-height:min(52vh,420px);overflow:auto}
+.panel .opts{columns:210px;column-gap:16px}
+.panel .opts .opt{break-inside:avoid}
+.opt{display:flex;gap:8px;align-items:center;font-size:14px;padding:4px 2px;cursor:pointer}
+.opt input{accent-color:var(--gold);width:16px;height:16px}
+.opt.dis{opacity:.4;cursor:default}
+.opt .n{color:var(--muted);font:400 12px/1 var(--f-mono)}
+.panel .pfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap}
+.linkbtn{background:none;border:0;padding:0;color:var(--gold-ink);font-size:13px;font-weight:600;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.linkbtn:hover{text-decoration-thickness:2px}
+.status{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:10px;font-size:14px}
+.status .res{font-weight:600}
+.achip{border:1.5px solid var(--gold);background:var(--gold-soft);color:var(--ink);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600;cursor:pointer}
+.achip:hover{background:var(--gold);color:var(--on-gold)}
+
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{border:1px solid var(--line);border-radius:12px;background:var(--bg);min-width:0;scroll-margin-top:180px}
+.card .head{padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px}
+.card .brand{font:700 17px/1.25 var(--f-display)}
+.card .sub,.card .role{color:var(--muted);font-size:14px}
+.card .yrs{font:500 13px/1.6 var(--f-mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.card .sum{grid-column:1/-1;margin-top:4px}
+.card .meta{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font:500 11px/1 var(--f-mono);padding:4px 7px;border-radius:5px;background:var(--chip);color:var(--muted)}
+.tag.svc-t{background:var(--chip);color:var(--ink)}
+.tag.h42{background:var(--chip)}
+.tag.cs{background:var(--chip);color:var(--ink)}
+.tag.cs::before{content:"★ ";color:var(--gold-ink)}
+.tag{cursor:default;user-select:none}
+.toggle{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--gold-ink);border-radius:999px;padding:4px 10px 4px 12px;color:var(--gold-ink);font-size:13px;font-weight:600;white-space:nowrap;margin-left:auto}
+.toggle:hover{background:var(--gold-soft)}
+.toggle svg{width:14px;height:14px;transition:transform .2s}
+.toggle[aria-expanded="true"]{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.toggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+.tag.match{background:var(--ink);color:var(--surface)}
+.sitemap{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:18px 24px;margin:14px 0 22px}
+.sitemap .grp{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sitemap .grp b{font:500 12px/1.4 var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}
+.sitemap button{all:unset;cursor:pointer;color:var(--muted)}.sitemap button:hover{color:var(--ink)}
+.foot-line{display:flex;gap:6px 18px;flex-wrap:wrap}
+.foot-line a{color:var(--muted)}.foot-line a:hover{color:var(--ink)}
+.foot-line button{all:unset;cursor:pointer;color:var(--muted);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}.foot-line button:hover{color:var(--ink)}
+.ck{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:0 max(12px,env(safe-area-inset-left,0px)) max(12px,env(safe-area-inset-bottom,0px))}
+.ck .box{max-width:760px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.18);padding:16px 18px;display:grid;gap:10px}
+.ck h2{font-size:17px}
+.ck p{margin:0;font-size:14px;color:var(--muted)}
+.ck .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ck .acts .btn{padding:8px 14px}
+.ck .acts .sp{flex:1}
+.ck .cat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.ck .cat small{grid-column:1;color:var(--muted);font-size:13px}
+.ck .cat input{grid-row:1/3;grid-column:2;align-self:center;width:18px;height:18px;accent-color:var(--gold)}
+.ck .cat .on{grid-row:1/3;grid-column:2;align-self:center;font:500 11px/1 var(--f-mono);color:var(--muted)}
+.ck .proto-n{font:400 12px/1.4 var(--f-mono);color:var(--gold-ink)}
+.formpriv{font-size:13px;color:var(--muted);margin:0}
+.legal h2{font-size:20px;margin:26px 0 8px}.legal p{max-width:72ch;margin:0}
+.legal .note{background:var(--gold-soft);border-radius:10px;padding:10px 14px;font-size:14px;margin:16px 0 0;max-width:72ch}
+.fv{display:flex;flex-direction:column;align-items:center;gap:6px}
+.sitemap a{color:var(--muted)}.sitemap a:hover{color:var(--ink)}
+.svc h3 a{color:inherit;text-decoration:none}.svc h3 a:hover{color:var(--gold-ink)}
+.detail{padding:0 16px 16px;border-top:1px dashed var(--line);display:grid;gap:10px}
+.detail p{margin:12px 0 0;max-width:72ch}
+.detail dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;margin:0;font-size:13px}
+.detail dt{color:var(--muted)} .detail dd{margin:0}
+.card.flash{box-shadow:0 0 0 2px var(--gold)}
+.empty{padding:28px;border:1px dashed var(--line);border-radius:12px;text-align:center;color:var(--muted)}
+
+/* timeline */
+.tl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.tl{min-width:780px;padding:12px 16px 16px}
+.tl-axis,.tl-row{display:grid;grid-template-columns:230px 1fr;gap:12px;align-items:center}
+.tl-axis .yrs{position:relative;height:18px;font:400 11px/1 var(--f-mono);color:var(--muted)}
+.tl-axis .yrs span{position:absolute;transform:translateX(-50%)}
+.tl-row{padding-block:5px;border-top:1px solid var(--line)}
+.tl-row.child{border-top:0;padding-block:2px}
+.tl-row .lbl{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-row.child .lbl{padding-left:16px;color:var(--muted);font-size:12px}
+.tl-row.parent .lbl b{font-weight:700}
+.tl-row .track{position:relative;height:16px}
+.tl-row.child .track{height:10px}
+.tl-row .bar{position:absolute;top:2px;height:12px;border-radius:4px;background:var(--bar);border:0;padding:0}
+.tl-row.child .bar{height:8px;top:1px;background:var(--bar-child)}
+.tl-row.parent .bar{background:var(--gold)}
+.tl.filtering .bar{opacity:.12}
+.tl.filtering .lbl{opacity:.4}
+.tl.filtering .tl-row.hit .lbl{opacity:1;color:var(--ink);font-weight:600}
+.tl.filtering .tl-row.hit .bar{opacity:1;background:var(--gold-ink);box-shadow:0 0 0 2px var(--gold-soft)}
+.tl.filtering .tl-row.parent.hit .lbl{opacity:1}
+.tl.filtering .tl-row.parent.hit .bar{opacity:.6}
+.tl-row .band{position:absolute;top:-4px;bottom:-4px;background:var(--gold-soft);border-radius:4px}
+.tl-note{font-size:12px;color:var(--muted);margin-top:8px}
+
+.cs-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+@media (max-width:1000px){.cs-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.cs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.cs-grid{grid-template-columns:1fr}}
+.csc{text-decoration:none;color:inherit;border-top:3px solid var(--gold);background:var(--surface);border-radius:0 0 12px 12px;padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0;box-shadow:0 0 0 1px var(--line)}
+.csc .big{font:700 24px/1.1 var(--f-display)}
+.csc .t{font-weight:600}
+.csc .d{color:var(--muted);font-size:14px}
+.csc .o{color:var(--gold-ink);font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+
+.contact{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:32px}
+@media (max-width:800px){.contact{grid-template-columns:1fr}}
+form{display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+input,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+textarea{min-height:110px;resize:vertical}
+.formnote{font-size:13px;padding:10px 12px;border-radius:8px;background:var(--gold-soft)}
+.subj{font:400 12px/1.4 var(--f-mono);color:var(--muted)}
+
+/* subpages */
+.page .wrap{padding-block:32px 48px}
+.back{display:block;width:fit-content;margin-bottom:18px;font-size:14px;font-weight:600}
+.page h1{font-size:clamp(28px,4vw,40px);margin:6px 0 10px}
+.page .lead{font-size:17px;color:var(--muted);max-width:62ch;margin:0 0 24px}
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:1fr}}
+.block h3{font-size:18px;margin:22px 0 6px}
+.block p{margin:0;max-width:66ch}
+.block ul{margin:6px 0 0;padding-left:20px}
+.side{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:12px}
+.side .k{font:500 11px/1 var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.side .v{font-size:14px}
+.kpis{display:flex;flex-wrap:wrap;gap:20px;margin:6px 0 24px}
+.kpis div{font-size:13px;color:var(--muted)}
+.kpis b{display:block;font:700 26px/1.1 var(--f-display);color:var(--ink)}
+.rel{display:grid;gap:8px;margin-top:10px}
+.rel a{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);text-decoration:none;color:inherit}
+.rel a span:last-child{font:500 12px/1.6 var(--f-mono);color:var(--muted);white-space:nowrap}
+
+/* logo page */
+/* ===== Layout variants V1–V4 (homepage only, internal switcher) ===== */
+.lvsw{display:flex;gap:4px;flex-wrap:wrap}
+.lvsw button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 10px;font-size:13px}
+.lvsw button[aria-pressed="true"]{background:var(--gold);color:var(--on-gold);font-weight:600}
+/* V1 tmavý úvod + služby jako číslované řádky */
+html.lv1 .hero{background:#1F1F21;color:#EDECE8}
+html.lv1 .hero h1{color:#F4F2EC}
+html.lv1 .hero p,html.lv1 .facts div{color:#B9B8BE}
+html.lv1 .who,html.lv1 .facts b{color:#D9B868}
+html.lv1 .hero .btn.ghost{color:#EDECE8;border-color:#46464D}
+html.lv1 .hero img{width:240px;height:240px;border-radius:24px;border:0;box-shadow:0 0 0 4px #D3AF5E}
+html.lv1 .svc-grid{grid-template-columns:1fr;gap:0;counter-reset:sv}
+html.lv1 .svc{display:grid;grid-template-columns:72px minmax(0,1fr) minmax(0,1.6fr) auto;gap:8px 24px;align-items:baseline;background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;padding:22px 0}
+html.lv1 .svc::before{counter-increment:sv;content:"0" counter(sv);font:700 30px/1 var(--f-display);color:var(--gold-ink)}
+html.lv1 .svc .count{display:none}
+html.lv1 .svc h3{font-size:22px}
+@media (max-width:760px){html.lv1 .svc{grid-template-columns:48px minmax(0,1fr)}html.lv1 .svc p,html.lv1 .svc .links{grid-column:2}}
+/* V2 na střed, služby 2×2, studie jako seznam */
+html.lv2 .hero .wrap{grid-template-columns:1fr;justify-items:center;text-align:center;padding-block:64px 48px}
+html.lv2 .hero img{order:-1;width:132px;height:132px}
+html.lv2 .hero h1{font-size:clamp(30px,5.4vw,58px);max-width:20ch;margin-inline:auto}
+html.lv2 .hero p{margin-inline:auto}
+html.lv2 .hero .ctas,html.lv2 .facts{justify-content:center}
+html.lv2 .facts div+div{border-left:1px solid var(--line);padding-left:28px}
+html.lv2 section > .wrap > header{align-items:center;text-align:center}
+html.lv2 .svc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+html.lv2 .svc{background:var(--gold-soft);border:0;padding:28px}
+html.lv2 .svc h3{font-size:24px}
+html.lv2 .cs-grid{grid-template-columns:1fr;gap:0}
+html.lv2 .csc{display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1.6fr) auto;gap:8px 24px;align-items:baseline;background:transparent;box-shadow:none;border:0;border-top:1px solid var(--line);border-radius:0;padding:20px 0}
+html.lv2 .csc .big{color:var(--gold-ink)}
+@media (max-width:760px){html.lv2 .svc-grid{grid-template-columns:1fr}html.lv2 .csc{grid-template-columns:1fr}html.lv2 .facts div+div{border:0;padding:0}}
+/* V3 velká fotka, tmavé karty služeb, hlavní studie přes celou šířku */
+html.lv3 .hero .wrap{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:48px}
+html.lv3 .hero img{width:100%;max-width:380px;height:auto;aspect-ratio:1;border-radius:18px;border:0;box-shadow:16px 16px 0 var(--gold-soft);justify-self:end}
+html.lv3 .facts{gap:10px}
+html.lv3 .facts div{background:var(--gold-soft);border-radius:10px;padding:12px 16px}
+html.lv3 .svc{background:#1F1F21;color:#EDECE8;border:0;padding:22px}
+html.lv3 .svc h3 a{color:#F4F2EC}
+html.lv3 .svc p,html.lv3 .svc .count{color:#B9B8BE}
+html.lv3 .svc .links a{color:#D9B868}
+html.lv3 .cs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+html.lv3 .csc:first-child{grid-column:1/-1;padding:28px}
+html.lv3 .csc .big{font-size:44px}
+@media (max-width:760px){html.lv3 .hero .wrap{grid-template-columns:1fr}html.lv3 .hero img{order:-1;max-width:260px;justify-self:start}html.lv3 .cs-grid{grid-template-columns:1fr}}
+/* V4 minimal: bez rámečků, hodně vzduchu, tenké linky */
+html.lv4 .hero .wrap{grid-template-columns:1fr;padding-block:72px 56px}
+html.lv4 .hero img{order:-1;width:72px;height:72px;border:0;box-shadow:none}
+html.lv4 .hero h1{font-weight:500;font-size:clamp(30px,5vw,56px);max-width:24ch}
+html.lv4 section{padding-block:64px}
+html.lv4 section > .wrap > header{flex-direction:row;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:10px;margin-bottom:28px}
+html.lv4 .svc{background:transparent;border:0;border-left:2px solid var(--gold);border-radius:0;padding:4px 0 4px 16px}
+html.lv4 .cs-grid{gap:28px}
+html.lv4 .csc{background:transparent;box-shadow:none;border-top:1px solid var(--line);border-radius:0;padding:16px 0}
+html.lv4 .csc .big{font-size:40px;font-weight:500}
+@media (max-width:760px){html.lv4 section > .wrap > header{flex-direction:column}}
+.lk{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;margin:0 0 16px;display:grid;gap:12px;max-width:900px}
+.lk h2{font-size:18px}.lk label{display:grid;gap:6px;font-size:14px}
+.lk input,.lk textarea{font:400 13px/1.4 var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+.lk .btn{justify-self:start}.lk-out{display:grid;gap:6px}.lk-out .k{font:500 11px/1 var(--f-mono);text-transform:uppercase;color:var(--muted);margin-top:6px}
+.lk code{font:400 12px/1.4 var(--f-mono);word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block}
+.lk-tw{overflow-x:auto}.lk-t{border-collapse:collapse;width:100%;font-size:13px}.lk-t th,.lk-t td{border-top:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+.lk-st{font:500 11px/1 var(--f-mono);padding:4px 7px;border-radius:5px;white-space:nowrap}.lk-st.ok{background:#E3F1E3;color:#1E5A1E}.lk-st.alias{background:var(--gold-soft);color:var(--gold-ink)}.lk-st.drop{background:#F6E1DE;color:#8A2A1E}
+.lk-pre{font:400 12px/1.4 var(--f-mono);background:var(--bg);padding:10px;border-radius:8px;overflow:auto;margin:0}
+.adm{position:fixed;right:max(24px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:45;display:flex;flex-direction:column;align-items:flex-end;gap:8px;max-width:calc(100vw - 48px)}
+html.ck-shown .adm{bottom:calc(var(--ckh,0px) + 20px)}
+.adm-btn{border:1px solid var(--line);background:var(--ink);color:var(--surface);border-radius:999px;padding:7px 14px;font:600 12px/1 var(--f-body);box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.adm-btn[aria-expanded="true"]{background:var(--gold);color:var(--on-gold);border-color:var(--gold)}
+.adm-panel{width:min(760px,calc(100vw - 48px));max-height:min(60vh,560px);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.2);padding:16px;display:grid;gap:14px;animation:admUp .18s ease-out}
+@keyframes admUp{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.adm .adm-sec{display:grid;gap:8px;padding:0 0 12px;border-bottom:1px solid var(--line)}.adm .adm-sec:last-child{border:0;padding:0}
+.adm-sec h3{font:500 11px/1.2 var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.adm-sec p{margin:0;font-size:13px}
+.adm-link{display:flex;gap:6px}
+.adm-link input{flex:1;min-width:0;font:400 12px/1.4 var(--f-mono);border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--bg);color:var(--ink)}
+.adm-link button{border:0;background:var(--gold);color:var(--on-gold);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600}
+.adm small{font:400 11px/1.3 var(--f-mono);color:var(--muted)}
+.adm .sitemap{margin:0}
+@media (max-width:600px){.adm{right:12px;left:12px;max-width:none}.adm-panel{width:100%;max-height:65vh}}
+footer{padding-block:28px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}.card{transition:box-shadow .3s}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="mark" viewBox="0 0 313 339"><path d="M0 79L51 50V289L0 260Z M262 50L313 79V260L262 289Z M88 28L138 0V111H175V0L225 28V151H88Z M88 188H225V311L175 339V228H138V339L88 311Z"/></symbol>
+  <symbol id="wordmark" viewBox="0 0 602 124"><path fill-rule="evenodd" d="M0 2H17V37H85V2H101V53H0Z M0 71H101V123H85V87H17V123H0Z M132 2H149V123H132Z M166 2H183L224 100L264 2H281L233 123H212Z M295 2H382V18H295Z M295 54H382V70H295Z M295 107H382V123H295Z M463 2H480V72H495V88H480V123H463V88H395V73Z M463 26L419 72H463Z M511 22C522 6 540 0 557 0C584 0 602 12 602 34C602 58 580 68 556 77C537 84 527 90 526 102V107H602V123H509V103C509 82 524 71 548 62C572 53 585 47 585 34C585 21 573 15 557 15C543 15 532 20 525 30Z"/></symbol>
+ </defs>
+</svg>
+
+
+
+<header class="top"><div class="wrap">
+  <a class="logo" href="#home" aria-label="Hive42"><svg viewBox="0 0 1000 339" role="img" aria-hidden="true"><use href="#mark" width="313" height="339" class="mk-gold"/><use href="#wordmark" x="380" y="108" width="602" height="124" class="wm-ink"/></svg></a>
+  <nav class="main" aria-label="Main"><a href="#services" data-i="navSvc"></a><a href="#experience" data-i="navExp"></a><a href="#cases" data-i="navCases"></a><a href="#contact" data-i="navContact"></a></nav>
+  <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="cs">CS</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="de">DE</button></div>
+</div></header>
+
+<main>
+<div id="pg-home">
+<section class="hero"><div class="wrap">
+  <div>
+    <div class="who" id="who"></div>
+    <h1 data-i="heroH"></h1>
+    <p data-i="heroP"></p>
+    <div class="ctas"><a class="btn" href="#contact" data-i="cta"></a><a class="btn ghost" href="#experience" data-i="seeExp"></a></div>
+    <div class="facts" id="facts"></div>
+  </div>
+  <img src="data:image/jpeg;base64,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" alt="Martin Dobry">
+</div></section>
+
+<section id="services"><div class="wrap">
+  <header><span class="eyebrow" data-i="navSvc"></span><h2 data-i="svcH"></h2></header>
+  <div class="svc-grid" id="svcGrid"></div>
+</div></section>
+
+<section id="experience"><div class="wrap">
+  <header><span class="eyebrow" data-i="navExp"></span><h2 data-i="expH"></h2></header>
+  <div class="fbar-wrap" id="fbarWrap">
+    <div class="fbar" id="fbar"></div>
+    <div class="panel" id="panel" hidden></div>
+    <div class="status"><span class="res" id="resCount" aria-live="polite"></span><span id="activeFilters" style="display:contents"></span></div>
+  </div>
+  <div id="cardsView" class="cards"></div>
+  <div id="timelineView" hidden></div>
+</div></section>
+
+<section id="cases"><div class="wrap">
+  <header><span class="eyebrow" data-i="navCases"></span><h2 data-i="casesH"></h2></header>
+  <div class="cs-grid" id="csGrid"></div>
+</div></section>
+
+<section id="contact"><div class="wrap contact">
+  <div>
+    <span class="eyebrow" data-i="navContact"></span>
+    <h2 style="margin:6px 0 12px" data-i="cta"></h2>
+    <p style="color:var(--muted);max-width:46ch" data-i="contactP"></p>
+    <p><a href="https://www.linkedin.com/in/martindobry" target="_blank" rel="noopener">LinkedIn: linkedin.com/in/martindobry</a></p>
+  </div>
+  <form id="cform" novalidate>
+    <input type="hidden" name="subject" value="[hive42.cz] Web enquiry">
+    <label for="f-name"><span data-i="fName"></span><input id="f-name" name="name" autocomplete="name" required></label>
+    <label for="f-company"><span data-i="fCompany"></span><input id="f-company" name="company" autocomplete="organization"></label>
+    <label for="f-email"><span data-i="fEmail"></span><input id="f-email" name="email" type="email" autocomplete="email" required></label>
+    <label for="f-msg"><span data-i="fMsg"></span><textarea id="f-msg" name="message" required></textarea></label>
+    <p class="formpriv" id="fPriv"></p>
+    <button class="btn" type="submit" style="justify-self:start" data-i="fSend"></button>
+    <div class="subj" data-i="fSubj"></div>
+    <div class="formnote" id="fnote" hidden></div>
+  </form>
+</div></section>
+</div>
+
+<div id="pg-sub" class="page" hidden><div class="wrap" id="subWrap"></div></div>
+</main>
+<footer><div class="wrap"><div class="foot-line"><span>© 2026 Hive42 s.r.o. · <span data-i="footer"></span></span><a href="#privacy" data-i="privT"></a><button type="button" class="ck-open" data-i="ckFoot"></button></div></div></footer>
+<div class="adm" id="adm">
+ <div class="adm-panel" id="admPanel" hidden role="region" aria-label="Admin">
+  <section class="adm-sec"><h3 data-a="hProto"></h3><p id="protoMsg"></p></section>
+  <section class="adm-sec"><h3 data-a="hLink"></h3><div class="adm-link"><input id="lkCur" readonly aria-label="Odkaz na tento pohled"><button type="button" id="lkCopy" data-a="copy"></button></div><small id="lkIn0"></small></section>
+  <section class="adm-sec"><h3 data-a="hLook"></h3><div class="lvsw" id="lvsw" role="group" aria-label="Varianty vzhledu"></div></section>
+  <section class="adm-sec"><h3 data-a="hMap"></h3><nav class="sitemap" id="sitemap" aria-label="Sitemap"></nav></section>
+  <section class="adm-sec"><h3 data-a="hTools"></h3><p><a href="#links" data-a="toolLink"></a></p></section>
+ </div>
+ <button type="button" class="adm-btn" id="admBtn" aria-controls="admPanel" aria-expanded="false"></button>
+</div>
+<div class="ck" id="ck" hidden role="dialog" aria-labelledby="ckT" aria-live="polite"><div class="box" id="ckBox"></div></div>
+
+<script>
+const T={
+ cs:{name:"Martin Dobrý",navSvc:"Služby",navExp:"Zkušenosti",navCases:"Případové studie",navContact:"Kontakt",
+  heroH:"Pomáhám firmám dodávat složité digitální projekty a produkty, od prvního MVP po nasazení ve 40+ zemích.",
+  heroP:"Řízení delivery a produktu, Scrum a agilní transformace. 15+ let řízení vývojových týmů pro klienty jako BMW, Microsoft, eBay, The Adecco Group a ŠKODA AUTO.",
+  cta:"Kontaktujte mě",ctaSvc:"Pojďme to probrat",seeExp:"Zobrazit zkušenosti",facts:[["9+ let","agilní delivery"],["40+ zemí","největší nasazení"],["#1 v ČR","HoppyGo P2P car sharing"]],
+  svcH:"Čtyři způsoby, jak s firmami spolupracuji",expH:"Zakázky podle brandu, role, služby a oboru",casesH:"Pět projektů podrobněji",
+  contactP:"Napište mi stručně o projektu nebo roli, kterou potřebujete obsadit. Obvykle odpovídám do dvou pracovních dnů.",
+  fName:"Jméno",fCompany:"Firma",fEmail:"E-mail",fMsg:"Zpráva",fSend:"Odeslat zprávu",fSubj:"Předmět e-mailu: [hive42.cz] Web enquiry",
+  fOk:"Prototyp: formulář zatím není napojený, nic se neodeslalo. Na hive42.cz zprávy dorazí Martinovi s předmětem „[hive42.cz] Web enquiry“.",fErr:"Vyplňte prosím jméno, platný e-mail a zprávu.",
+  footer:"Praha",engs:"zakázek",of:"z",results:"zakázek",clear:"Zrušit filtry",done:"Hotovo",cards:"Karty",timeline:"Časová osa",show:"Zobrazit detail",hide:"Skrýt detail",
+  ind:"Obory",env:"Prostředí",brands:"Brandy",svcL:"Služby",roles:"Role",none:"Žádná zakázka neodpovídá všem vybraným filtrům.",
+  caseLink:"Případová studie",pageLink:"Detailní stránka",openCase:"Otevřít studii →",openPage:"Otevřít detail →",via:"Přes",matched:"Odpovídá filtru",
+  tlNote:"Hive42 s.r.o. je moje firma, přes kterou poskytuji služby (2019 – dosud); řádky pod ní jsou zakázky pro klienty, často souběžně. Stejně tak Microsoft a Ford pod agenturou Wunderman. Klik na pruh otevře kartu.",sitemap:"Mapa stránek",intOnly:"viditelné jen interně (#internal / #public)",home:"Úvod",
+  present:"dosud",back:"← Zpět na úvod",related:"Související zakázky",forWho:"Pro koho",outcomes:"Co ode mě dostanete",allRelated:"Zobrazit v přehledu zkušeností →",
+  context:"Kontext",challenge:"Výzva",did:"Co jsem udělal",result:"Výsledek",roleTools:"Role a nástroje",years:"Období",role:"Role",
+  proto:"<b>Prototyp v4 (K4)</b> · CS / EN / DE · samostatné stránky služeb a studií, cookies a ochrana údajů (návrh) · DE čeká na kontrolu rodilým mluvčím (W6)",svcMore:"Více o službě →"},
+ en:{name:"Martin Dobry",navSvc:"Services",navExp:"Experience",navCases:"Case studies",navContact:"Contact",
+  heroH:"I help companies deliver complex digital projects and products, from the first MVP to rollouts in 40+ countries.",
+  heroP:"Delivery and product leadership, Scrum and agile transformation. 15+ years managing software development teams for clients like BMW, Microsoft, eBay, The Adecco Group and ŠKODA AUTO.",
+  cta:"Get in touch",ctaSvc:"Let's discuss",seeExp:"See experience",facts:[["9+ years","agile delivery"],["40+ countries","largest rollout"],["#1 in CZ","HoppyGo P2P car sharing"]],
+  svcH:"Four ways I work with companies",expH:"Engagements by brand, role, service and industry",casesH:"Five projects in more depth",
+  contactP:"Tell me briefly about your project or the role you need to fill. I usually reply within two working days.",
+  fName:"Name",fCompany:"Company",fEmail:"E-mail",fMsg:"Message",fSend:"Send message",fSubj:"E-mail subject: [hive42.cz] Web enquiry",
+  fOk:"Prototype: the form is not connected yet, so nothing was sent. On hive42.cz, messages reach Martin with the subject „[hive42.cz] Web enquiry“.",fErr:"Please fill in your name, a valid e-mail and a message.",
+  footer:"Prague",engs:"engagements",of:"of",results:"engagements",clear:"Clear filters",done:"Done",cards:"Cards",timeline:"Timeline",show:"Show details",hide:"Hide details",
+  ind:"Industries",env:"Environment",brands:"Brands",svcL:"Services",roles:"Roles",none:"No engagement matches all selected filters.",
+  caseLink:"Case study",pageLink:"Detail page",openCase:"Read the case study →",openPage:"Open the detail page →",via:"Via",matched:"Matches filter",
+  tlNote:"Hive42 s.r.o. is my company, through which I provide my services (2019 – present); the rows below it are client engagements, often running in parallel. Likewise Microsoft and Ford under the Wunderman agency. Click a bar to open its card.",sitemap:"Sitemap",intOnly:"internal only (#internal / #public)",home:"Home",
+  present:"present",back:"← Back to home",related:"Related engagements",forWho:"Who it's for",outcomes:"What you get",allRelated:"Show in the experience overview →",
+  context:"Context",challenge:"Challenge",did:"What I did",result:"Result",roleTools:"Role and tools",years:"Years",role:"Role",
+  proto:"<b>Prototype v4 (K4)</b> · CS / EN / DE · separate pages for services and case studies, cookies and privacy (draft) · DE awaits native-speaker review (W6)",svcMore:"More about this service →"},
+ de:{name:"Martin Dobry",navSvc:"Leistungen",navExp:"Erfahrung",navCases:"Fallstudien",navContact:"Kontakt",
+  heroH:"Ich unterstütze Unternehmen bei komplexen digitalen Projekten und Produkten, vom ersten MVP bis zum Rollout in über 40 Ländern.",
+  heroP:"Delivery- und Produktverantwortung, Scrum und agile Transformation. Über 15 Jahre Führung von Softwareentwicklungsteams für Kunden wie BMW, Microsoft, eBay, The Adecco Group und ŠKODA AUTO.",
+  cta:"Kontakt aufnehmen",ctaSvc:"Lassen Sie uns sprechen",seeExp:"Erfahrung ansehen",facts:[["9+ Jahre","agile Delivery"],["40+ Länder","größter Rollout"],["#1 in CZ","HoppyGo P2P-Carsharing"]],
+  svcH:"Vier Formen der Zusammenarbeit",expH:"Projekte nach Marke, Rolle, Leistung und Branche",casesH:"Fünf Projekte im Detail",
+  contactP:"Beschreiben Sie kurz Ihr Projekt oder die Rolle, die Sie besetzen möchten. Ich antworte in der Regel innerhalb von zwei Arbeitstagen.",
+  fName:"Name",fCompany:"Unternehmen",fEmail:"E-Mail",fMsg:"Nachricht",fSend:"Nachricht senden",fSubj:"E-Mail-Betreff: [hive42.cz] Web enquiry",
+  fOk:"Prototyp: Das Formular ist noch nicht angebunden, es wurde nichts gesendet. Auf hive42.cz erreichen Nachrichten Martin mit dem Betreff „[hive42.cz] Web enquiry“.",fErr:"Bitte Name, gültige E-Mail und Nachricht ausfüllen.",
+  footer:"Prag",engs:"Projekte",of:"von",results:"Projekten",clear:"Filter zurücksetzen",done:"Fertig",cards:"Karten",timeline:"Zeitachse",show:"Details anzeigen",hide:"Details ausblenden",
+  ind:"Branchen",env:"Umfeld",brands:"Marken",svcL:"Leistungen",roles:"Rollen",none:"Kein Projekt entspricht allen gewählten Filtern.",
+  caseLink:"Fallstudie",pageLink:"Detailseite",openCase:"Fallstudie lesen →",openPage:"Detailseite öffnen →",via:"Über",matched:"Passt zum Filter",
+  tlNote:"Hive42 s.r.o. ist mein Unternehmen, über das ich meine Leistungen erbringe (2019 – heute); die Zeilen darunter sind Kundenprojekte, oft parallel. Ebenso Microsoft und Ford unter der Agentur Wunderman. Ein Klick auf einen Balken öffnet die Karte.",sitemap:"Sitemap",intOnly:"nur intern (#internal / #public)",home:"Startseite",
+  present:"heute",back:"← Zurück zur Startseite",related:"Zugehörige Projekte",forWho:"Für wen",outcomes:"Was Sie bekommen",allRelated:"In der Erfahrungsübersicht anzeigen →",
+  context:"Kontext",challenge:"Herausforderung",did:"Was ich getan habe",result:"Ergebnis",roleTools:"Rolle und Werkzeuge",years:"Zeitraum",role:"Rolle",
+  proto:"<b>Prototyp v4 (K4)</b> · CS / EN / DE · eigene Seiten für Leistungen und Fallstudien, Cookies und Datenschutz (Entwurf) · DE wartet auf Muttersprachler-Prüfung (W6)",svcMore:"Mehr zur Leistung →"}
+};
+const L={ // taxonomy labels
+ role:{pm:["Projektový manažer","Project Manager","Projektmanager"],dm:["Delivery Manager","Delivery Manager","Delivery Manager"],prod:["Produktový manažer","Product Manager","Produktmanager"],po:["Product Owner","Product Owner","Product Owner"],sm:["Scrum Master","Scrum Master","Scrum Master"],ac:["Agile Coach","Agile Coach","Agile Coach"],cons:["Konzultant","Consultant","Berater"],coo:["COO","COO","COO"],cmo:["CMO","CMO","CMO"],ops:["Operations Manager","Operations Manager","Operations Manager"],web:["Web Manager","Web Manager","Web Manager"],wm:["Webmaster","Webmaster","Webmaster"]},
+ ind:{space:["Vesmír","Space","Raumfahrt"],research:["Výzkum","Research","Forschung"],ecom:["E-commerce","E-commerce","E-Commerce"],mfg:["Výroba","Manufacturing","Fertigung"],auto:["Automotive","Automotive","Automobil"],ins:["Pojišťovnictví","Insurance","Versicherungen"],mobile:["Mobilní aplikace","Mobile apps","Mobile Apps"],ai:["AI","AI","KI"],industry:["Průmysl","Industry","Industrie"],edtech:["EdTech","EdTech","EdTech"],retail:["Retail","Retail","Einzelhandel"],hr:["HR tech","HR tech","HR-Tech"],mobility:["Mobilita","Mobility","Mobilität"],market:["Marketplace","Marketplace","Marktplatz"],mauto:["Marketingová automatizace","Marketing automation","Marketing-Automatisierung"],web:["Web","Web","Web"],dm:["Digitální marketing","Digital marketing","Digitales Marketing"],print:["Tisk","Printing","Druck"],re:["Reality","Real estate","Immobilien"],intranet:["Intranet","Intranet","Intranet"],ce:["Spotřební elektronika","Consumer electronics","Unterhaltungselektronik"],it:["IT","IT","IT"]},
+ env:{corp:["Korporace","Corporate","Konzern"],scale:["Scale-up","Scale-up","Scale-up"],startup:["Startup","Startup","Startup"],sme:["Malá a střední firma","SME","KMU"],research:["Výzkum / veřejný sektor","Research / public sector","Forschung / öffentlicher Sektor"],cstart:["Korporátní startup","Corporate startup","Corporate Startup"]}
+};
+const SV={
+ dpm:{name:["Delivery Management","Delivery Management","Delivery Management"],
+  text:["Řídím složité mezinárodní projekty a programy od začátku do konce: rozsah, rozpočet, harmonogram, rizika a stakeholdery napříč byznysem a IT.","I run complex international projects and programmes end to end: scope, budget, timeline, risks and stakeholders across business and IT.","Ich steuere komplexe internationale Projekte und Programme von Anfang bis Ende: Umfang, Budget, Zeitplan, Risiken und Stakeholder in Business und IT."],
+  who:["Firmy, které potřebují dodat program napříč týmy, dodavateli a zeměmi.","Companies that need to deliver a programme across teams, vendors and countries.","Unternehmen, die ein Programm über Teams, Dienstleister und Länder hinweg liefern müssen."],
+  out:[["Jasný plán, rozpočet a přehled rizik pro řídicí výbory","Delivery napříč více týmy, dodavateli a zeměmi","Transparentní reporting v Jira, Confluence nebo Azure DevOps"],["A clear plan, budget and risk overview for steering committees","Delivery across multiple teams, vendors and countries","Transparent reporting in Jira, Confluence or Azure DevOps"],["Klarer Plan, Budget und Risikoübersicht für Lenkungsausschüsse","Delivery über mehrere Teams, Dienstleister und Länder","Transparentes Reporting in Jira, Confluence oder Azure DevOps"]]},
+ pmpo:{name:["Product Management","Product Management","Produktmanagement"],
+  text:["Od discovery a MVP po škálování: produktová strategie, roadmapa a priority, které drží produkt v jednom směru s byznysem.","From discovery and MVP to scaling: the product strategy, roadmap and priorities that keep the product aligned with the business.","Von Discovery und MVP bis zur Skalierung: Produktstrategie, Roadmap und Prioritäten, die das Produkt am Geschäft ausrichten."],
+  who:["Firmy, které stavějí nový digitální produkt nebo potřebují posunout ten stávající.","Companies building a new digital product or moving an existing one forward.","Unternehmen, die ein neues digitales Produkt aufbauen oder ein bestehendes weiterentwickeln."],
+  out:[["Discovery a validace od nápadu přes PoC po MVP","Roadmapa navázaná na byznys cíle a business case","Škálování produktu na nové trhy"],["Discovery and validation from idea through PoC to MVP","A roadmap and business case tied to business goals","Scaling a product to new markets"],["Discovery und Validierung von der Idee über PoC bis zum MVP","Roadmap und Business Case entlang der Geschäftsziele","Skalierung eines Produkts in neue Märkte"]]},
+ at:{name:["Agilní Transformace","Agile Transformation","Agile Transformation"],
+  text:["Přechod firmy nebo divize na agilní způsob práce: procesy, nastavení týmů, nástroje a koučink lidí na všech úrovních.","Moving a company or division to agile ways of working: processes, team setup, tooling and coaching for people at every level.","Der Wechsel eines Unternehmens oder Bereichs zu agilen Arbeitsweisen: Prozesse, Teamaufstellung, Werkzeuge und Coaching auf allen Ebenen."],
+  who:["Firmy, které přecházejí z vodopádu na agilní řízení nebo škálují agile na více týmů.","Companies moving from waterfall to agile, or scaling agile to more teams.","Unternehmen, die von Wasserfall auf agil umstellen oder Agilität auf mehrere Teams skalieren."],
+  out:[["Posouzení současného stavu a plán přechodu","Nastavení týmů, rolí a nástrojů (Scrum, Kanban, SAFe)","Koučink týmů, Product Ownerů a manažerů"],["An assessment of current ways of working and a transition plan","Team setup, roles and tooling (Scrum, Kanban, SAFe)","Coaching for teams, Product Owners and managers"],["Bewertung der heutigen Arbeitsweise und ein Übergangsplan","Teamaufstellung, Rollen und Werkzeuge (Scrum, Kanban, SAFe)","Coaching für Teams, Product Owner und Führungskräfte"]]},
+ sm:{name:["Scrum (SM, PO)","Scrum (SM, PO)","Scrum (SM, PO)"],
+  text:["Role ve Scrum týmu, Scrum Master i Product Owner: ceremonie, backlog a priority, flow, DevOps a CI/CD praxe a koučink, který z juniorů dělá seniory.","Roles in the Scrum team, Scrum Master and Product Owner: ceremonies, backlog and priorities, flow, DevOps and CI/CD practices, and coaching that grows juniors into seniors.","Rollen im Scrum-Team, Scrum Master und Product Owner: Zeremonien, Backlog und Prioritäten, Flow, DevOps- und CI/CD-Praktiken und Coaching, das Juniors zu Seniors macht."],
+  who:["Týmy, které potřebují zrychlit delivery a zlepšit spolupráci.","Teams that need to speed up delivery and work better together.","Teams, die schneller liefern und besser zusammenarbeiten wollen."],
+  out:[["Scrum ceremonie, které týmům opravdu pomáhají","Zdravý backlog a jasné priority pro tým (Product Owner)","Flow, DevOps a CI/CD praxe a koučink, který rozvíjí lidi v týmu"],["Scrum ceremonies that actually help the team","A healthy backlog and clear priorities for the team (Product Owner)","Flow, DevOps and CI/CD practices, and coaching that develops people"],["Scrum-Zeremonien, die dem Team wirklich helfen","Ein gesundes Backlog und klare Prioritäten für das Team (Product Owner)","Flow-, DevOps- und CI/CD-Praktiken und Coaching, das Menschen weiterentwickelt"]]}
+};
+const NOW=2026;
+// i: [cs,en,de] for role, sum, det
+const D=[
+ {id:"Z01",p:"hive42",brand:"METRO experiment",sub:"SVT / ČVUT",brands:["METRO experiment","SVT","Czech Technical University","ESA","Czech Academy of Sciences"],roles:["pm"],svc:["dpm"],ind:["space","research","ai"],env:"research",s:2026,e:null,cs:"case-metro",
+  role:["Externí projektový manažer (částečný úvazek)","External Project Manager (part-time)","Externer Projektmanager (Teilzeit)"],
+  sum:["Projektový manažer českého vědeckého experimentu pro Mezinárodní vesmírnou stanici, který dodává konsorcium čtyř partnerů s financováním přes ESA.","Project manager for a Czech science experiment headed for the International Space Station, delivered by a four-partner consortium and funded through ESA.","Projektmanager eines tschechischen Wissenschaftsexperiments für die Internationale Raumstation, umgesetzt von einem Konsortium aus vier Partnern und finanziert über die ESA."],
+  det:["METRO (MEtabolic gases TRansfer for Optimised algae growth) zkoumá přestup plynů při kultivaci řas v mikrogravitaci. Koordinuji konsorcium ČVUT, Ústavu chemických procesů AV ČR, esc Aerospace a SVT podle standardů ECSS.","METRO (MEtabolic gases TRansfer for Optimised algae growth) studies gas transfer in algae cultivation in microgravity. I coordinate the consortium of Czech Technical University, the Institute of Chemical Process Fundamentals of the Czech Academy of Sciences, esc Aerospace and SVT, working to ECSS standards.","METRO (MEtabolic gases TRansfer for Optimised algae growth) untersucht den Gasaustausch bei der Algenkultivierung in Mikrogravitation. Ich koordiniere das Konsortium aus Tschechischer Technischer Universität, dem Institut für chemische Prozessgrundlagen der Tschechischen Akademie der Wissenschaften, esc Aerospace und SVT nach ECSS-Standards."]},
+ {id:"Z02",p:"hive42",brand:"Průša Research",brands:["Průša Research"],roles:["prod","sm"],svc:["pmpo","sm"],ind:["ecom","mfg"],env:"scale",s:2025,e:2025,
+  role:["Produktový manažer, Scrum Master","Product Manager, Scrum Master","Produktmanager, Scrum Master"],
+  sum:["eShop Product Manager v kombinované produktové, delivery a Scrum Master roli pro e-commerce platformu globálního výrobce 3D tiskáren.","eShop Product Manager in a combined product, delivery and Scrum Master role for the e-commerce platform of a global 3D printer manufacturer.","eShop Product Manager in einer kombinierten Produkt-, Delivery- und Scrum-Master-Rolle für die E-Commerce-Plattform eines globalen 3D-Drucker-Herstellers."],
+  det:["Vlastnil jsem e-commerce backlog a vedl Scrum ceremonie pro core tým 6 vývojářů a externí partnery; prioritizoval funkce pro globální růst.","Owned the e-commerce backlog and ran Scrum ceremonies for a core team of 6 developers plus external partners; prioritized features to support global growth.","Verantwortung für das E-Commerce-Backlog und die Scrum-Zeremonien eines Kernteams von 6 Entwicklern plus externen Partnern; Priorisierung von Features für globales Wachstum."]},
+ {id:"Z03",p:"hive42",brand:"Volvo",brands:["Volvo","Allianz"],roles:["pm","sm"],svc:["dpm","sm"],ind:["auto","ins","mobile"],env:"corp",s:2023,e:2024,
+  role:["Projektový manažer, Scrum Master","Project Manager, Scrum Master","Projektmanager, Scrum Master"],
+  sum:["Dodávka mobilní aplikace s externím vývojovým týmem a sladění stakeholderů ze tří korporací.","Delivery of a mobile app built with an external development team, aligning stakeholders across three corporations.","Umsetzung einer mobilen App mit einem externen Entwicklungsteam und Abstimmung der Stakeholder aus drei Konzernen."],
+  det:["Řízení rozpočtu, harmonogramu a change requestů mezi Volvem, Allianz a třetím partnerem pod NDA; spolupráce s externím UX studiem a vývojovým týmem.","Managed budget, timeline and change requests across Volvo, Allianz and a third partner under NDA; worked with an external UX studio and development team.","Steuerung von Budget, Zeitplan und Change Requests zwischen Volvo, Allianz und einem dritten Partner unter NDA; Zusammenarbeit mit einem externen UX-Studio und Entwicklungsteam."]},
+ {id:"Z04",p:"hive42",brand:"Blindspot AI",sub:"Adastra Group",brands:["Blindspot AI","Adastra","Hyundai","AskYourData"],roles:["cons","pm"],svc:["dpm"],ind:["ai","auto","industry"],env:"scale",s:2023,e:2024,
+  role:["Senior konzultant, projektový manažer","Senior Consultant, Project Manager","Senior Berater, Projektmanager"],
+  sum:["Dodávka AI projektů pro klienty z automotive a průmyslu, od pre-sale po delivery a řízení rizik.","Delivery of AI projects for automotive and industry clients, from pre-sales to delivery and risk management.","Umsetzung von KI-Projekten für Kunden aus Automobil und Industrie, vom Pre-Sales bis zu Delivery und Risikomanagement."],
+  det:["Řízení GenAI produktu AskYourData (LLM, RAG), strojové učení, optimalizace tras a plánování výroby, detekce anomálií a podvodů. Pro Hyundai řešení plánování výroby, které díky adaptivní optimalizaci sekvencí šetří statisíce EUR ročně.","Steering of the GenAI product AskYourData (LLM, RAG), machine learning, route and production planning optimization, anomaly and fraud detection. For Hyundai, a production planning solution saving hundreds of thousands of EUR per year through adaptive sequence optimization.","Steuerung des GenAI-Produkts AskYourData (LLM, RAG), maschinelles Lernen, Routen- und Produktionsplanungsoptimierung, Anomalie- und Betrugserkennung. Für Hyundai eine Produktionsplanungslösung, die durch adaptive Sequenzoptimierung jährlich Hunderttausende EUR spart."]},
+ {id:"Z05",p:"hive42",brand:"Vogel Communications Group",brands:["Vogel Communications Group"],roles:["sm"],svc:["sm"],ind:["auto","edtech"],env:"corp",s:2023,e:2023,
+  role:["Scrum Master","Scrum Master","Scrum Master"],
+  sum:["Scrum Master 3D tréninkového systému pro automobilové mechaniky a mechatroniky.","Scrum Master for a 3D training system for automotive mechanics and mechatronics.","Scrum Master für ein 3D-Trainingssystem für Kfz-Mechaniker und Mechatroniker."],
+  det:["S Product Ownerem jsem dotáhl rozsah MVP a připravil vše, co tým potřeboval pro práci ve Scrumu: Jira, Confluence, backlog, prioritizace a roadmapa.","Finalized the MVP scope with the Product Owner and set up everything the team needed to work in Scrum: Jira, Confluence, backlog, prioritization and roadmap.","Gemeinsam mit dem Product Owner den MVP-Umfang festgelegt und alles für die Arbeit in Scrum aufgesetzt: Jira, Confluence, Backlog, Priorisierung und Roadmap."]},
+ {id:"Z06",p:"hive42",brand:"BMW & MINI",sub:"via Berylls",brands:["BMW","MINI","Berylls"],roles:["cons"],svc:["dpm","at"],ind:["auto","ecom"],env:"corp",s:2021,e:2022,cs:"case-bmw",
+  role:["Portfolio konzultant, Jira admin","Portfolio consultant, Jira admin","Portfolio-Berater, Jira-Admin"],
+  sum:["Portfolio tým transformace Digital Vehicle Sales: přechod prodeje aut od dealerů k přímému online prodeji ve 40+ zemích.","Portfolio team for the Digital Vehicle Sales transformation, moving car sales from dealers to direct online sales in 40+ countries.","Portfolio-Team der Digital-Vehicle-Sales-Transformation: Umstellung des Autoverkaufs vom Händler auf direkten Online-Vertrieb in über 40 Ländern."],
+  det:["Program o ~200 lidech (Product Owner a 6+ sub-PO s vlastními Scrum týmy), sladěný se dvěma podobně velkými programy v měsíčním a kvartálním PI planningu (SAFe). Pokročilé struktury v Jira a Confluence, refinement a prioritizace backlogu napříč B2C a B2B, dvěma prodejními modely a dvěma značkami.","A programme of ~200 people (Product Owner and 6+ sub-POs with dedicated Scrum teams), aligned with two similarly sized programmes in monthly and quarterly PI planning (SAFe). Advanced Jira and Confluence structures; backlog refinement and prioritization across B2C and B2B, two sales models and two brands.","Ein Programm mit ~200 Personen (Product Owner und 6+ Sub-POs mit eigenen Scrum-Teams), abgestimmt mit zwei ähnlich großen Programmen im monatlichen und quartalsweisen PI Planning (SAFe). Erweiterte Jira- und Confluence-Strukturen; Backlog-Refinement und Priorisierung über B2C und B2B, zwei Vertriebsmodelle und zwei Marken."]},
+ {id:"Z07",p:"hive42",brand:"Direct Online Services",sub:"Worktop Express",brands:["Direct Online Services","Worktop Express"],roles:["po"],svc:["pmpo","sm"],ind:["ecom"],env:"sme",s:2021,e:2021,
+  role:["Product Owner","Product Owner","Product Owner"],
+  sum:["Product Owner pilotního intranetového portálu a požadavků na e-shopy ve Velké Británii a Německu.","Product Owner for an intranet portal pilot and the requirements for UK and German e-shops.","Product Owner für ein Intranet-Pilotportal und die Anforderungen an die E-Shops in Großbritannien und Deutschland."],
+  det:["Prioritizace, napojení na další systémy a kvalita dat pro pilotní intranet; požadavky na stávající e-shopy v UK a DE s týmem v Pythonu a Djangu.","Prioritization, integration with other systems and data quality for the intranet pilot; requirements for the existing e-shops in the UK and Germany, working with a Python/Django team.","Priorisierung, Anbindung an weitere Systeme und Datenqualität für das Intranet-Pilotprojekt; Anforderungen an die bestehenden E-Shops in UK und DE mit einem Python/Django-Team."]},
+ {id:"Z08",p:"hive42",brand:"Doller.cz",brands:["Doller.cz"],roles:["cons"],svc:["pmpo"],ind:["ecom"],env:"startup",s:2020,e:2021,
+  role:["Growth konzultant","Growth consultant","Growth-Berater"],
+  sum:["Growth hacking se zakladatelem českého e-commerce byznysu.","Growth hacking with the founder of a Czech e-commerce business.","Growth Hacking mit dem Gründer eines tschechischen E-Commerce-Unternehmens."],
+  det:["Byznys, online marketing, UX, CRO, SEO a kohortní analýza; konzultace, jak škálovat provoz, produktové portfolio a funkce.","Business, online marketing, UX, CRO, SEO and cohort analysis; consulting on how to scale operations, the product portfolio and features.","Business, Online-Marketing, UX, CRO, SEO und Kohortenanalyse; Beratung zur Skalierung von Betrieb, Produktportfolio und Funktionen."]},
+ {id:"Z09",p:"hive42",brand:"PetCenter.cz",sub:"& Pytelgranuli.cz",brands:["PetCenter.cz","Pytelgranuli.cz"],roles:["po"],svc:["pmpo","sm"],ind:["ecom","retail"],env:"sme",s:2019,e:2019,
+  role:["E-commerce manažer, Product Owner","E-commerce Manager, Product Owner","E-Commerce-Manager, Product Owner"],
+  sum:["Řízení několika e-shopů ve více zemích, napojených na kamennou síť.","Management of several e-shops in multiple countries, linked to a retail network.","Führung mehrerer E-Shops in mehreren Ländern, verbunden mit einem Filialnetz."],
+  det:["Vedení a koučink týmu online marketingu, SEO a zákaznické podpory; CRO a analytika; P&L a plán expanze; příprava migrace z Magenta na Shoptet včetně celého nákupního procesu.","Led and coached the online marketing, SEO and customer support team; CRO and analytics; P&L and expansion planning; planned the migration from Magento to Shoptet including the full purchase flow.","Führung und Coaching des Teams für Online-Marketing, SEO und Kundensupport; CRO und Analytics; P&L und Expansionsplanung; Planung der Migration von Magento zu Shoptet inklusive des gesamten Kaufprozesses."]},
+ {id:"Z10",brand:"The Adecco Group",brands:["The Adecco Group","Amazon"],roles:["dm","sm","ac"],svc:["dpm","pmpo","at","sm"],ind:["hr","ai"],env:"corp",s:2020,e:2021,cs:"case-adecco",
+  role:["Delivery Manager, Scrum Master, kouč","Delivery Manager, Scrum Master, Coach","Delivery Manager, Scrum Master, Coach"],
+  sum:["Převzal jsem zaseknutý AI chatbot pro nábor, spustil MVP s Amazonem jako klientem a rozšířil ho do 5+ zemí.","Took over a stalled AI recruiting chatbot, launched an MVP with Amazon as client and rolled it out to 5+ countries.","Übernahme eines festgefahrenen KI-Recruiting-Chatbots, Start eines MVP mit Amazon als Kunde und Rollout in über 5 Länder."],
+  det:["Předání od externího dodavatele novému internímu týmu; nový backlog a sprint planning zdvojnásobily velocity i kvalitu do 2 měsíců. Provedl jsem produkt právními, bezpečnostními a compliance komisemi a zkrátil první fázi náboru ze 2 měsíců na 2 týdny. DevOps proces v Azure DevOps (.NET, C#, React). Nominace do top 10 projektů roku Adecco Group a postup do top 3.","Handover from an external supplier to a new internal team; a rebuilt backlog and sprint planning doubled velocity and quality within 2 months. Led the product through legal, security and compliance boards and cut the first recruitment phase from 2 months to 2 weeks. DevOps process on Azure DevOps (.NET, C#, React). Nominated to the Adecco Group top 10 projects of the year, then advanced to the top 3.","Übergabe von einem externen Dienstleister an ein neues internes Team; neues Backlog und Sprint Planning verdoppelten Velocity und Qualität innerhalb von 2 Monaten. Produkt durch Rechts-, Sicherheits- und Compliance-Gremien geführt und die erste Recruiting-Phase von 2 Monaten auf 2 Wochen verkürzt. DevOps-Prozess in Azure DevOps (.NET, C#, React). Nominiert für die Top 10 Projekte des Jahres der Adecco Group, danach unter den Top 3."]},
+ {id:"Z11",brand:"ŠKODA AUTO DigiLab",sub:"Škoda X · HoppyGo",brands:["ŠKODA AUTO","HoppyGo","BeRider","Volkswagen Group"],roles:["pm","po","coo"],svc:["pmpo","at","sm"],ind:["auto","mobility","market"],env:"cstart",s:2017,e:2019,cs:"case-hoppygo",
+  role:["Senior PM a spoluzakladatel, později COO","Senior PM & Co-Founder, later COO","Senior PM und Mitgründer, später COO"],
+  sum:["DigiLab byl inovační lab ŠKODA AUTO (koncern Volkswagen), pod kterým vznikly startupy HoppyGo a BeRider. HoppyGo jsem dovedl od nápadu k jedničce P2P car sharingu v ČR a lab pomohl vybudovat ze 6 na 30+ lidí.","DigiLab was ŠKODA AUTO's innovation lab (Volkswagen Group) and the home of the startups HoppyGo and BeRider. I took HoppyGo from idea to the #1 P2P car sharing in the Czech Republic and helped grow the lab from 6 to 30+ people.","Das DigiLab war das Innovationslabor von ŠKODA AUTO (Volkswagen-Konzern), aus dem die Startups HoppyGo und BeRider hervorgingen. HoppyGo von der Idee zur Nummer 1 im tschechischen P2P-Carsharing geführt und das Labor von 6 auf über 30 Personen mit aufgebaut."],
+  det:["PM a PO s vlastním Scrum týmem: koncept, PoC, MVP, business case a schválení investice boardem; později člen dozorčí rady HoppyGo. HoppyGo se umístilo v top 5 nejrychleji rostoucích firem Deloitte Technology Fast 50 CE 2022 (růst 2099 %). Jako COO: zavedení agile (Lean, Kanban, Scrum), strategie vývoje, IT migrace s auditem ISO 27001, nábor interních týmů. První AI projekt ve ŠKODA AUTO (Sound Analyzer).","PM and PO with a dedicated Scrum team: concept, PoC, MVP, business case and board approval; later a member of the HoppyGo Supervisory Board. HoppyGo was named among the top 5 fastest growing companies in Deloitte Technology Fast 50 CE 2022 (2099 % growth). As COO: introduced agile (Lean, Kanban, Scrum), development strategy, IT migration with an ISO 27001 audit and hiring of internal teams. First AI project at ŠKODA AUTO (Sound Analyzer).","PM und PO mit eigenem Scrum-Team: Konzept, PoC, MVP, Business Case und Freigabe durch den Vorstand; später Mitglied im Aufsichtsrat von HoppyGo. HoppyGo zählte im Deloitte Technology Fast 50 CE 2022 zu den Top 5 der am schnellsten wachsenden Unternehmen (2099 % Wachstum). Als COO: Einführung von Agile (Lean, Kanban, Scrum), Entwicklungsstrategie, IT-Migration mit ISO-27001-Audit und Aufbau interner Teams. Erstes KI-Projekt bei ŠKODA AUTO (Sound Analyzer)."]},
+ {id:"Z12",brand:"eBay Enterprise",sub:"Zeta Interactive",brands:["eBay","Zeta Interactive"],roles:["ops"],svc:["dpm","at"],ind:["mauto","ecom"],env:"corp",s:2015,e:2016,cs:"case-ebay",
+  role:["Operations Manager, vedoucí pražského centra","Operations Manager, Head of Prague Center","Operations Manager, Leiter des Prager Zentrums"],
+  sum:["Pomáhal jsem škálovat pražské delivery centrum a rozšířit kampaňovou delivery pro eBay z EU na globální pokrytí.","Helped scale the Prague delivery centre and extend eBay's campaign delivery from EU to global coverage.","Mithilfe beim Skalieren des Prager Delivery-Zentrums und bei der Ausweitung der Kampagnen-Delivery für eBay von der EU auf globale Abdeckung."],
+  det:["Vedení týmu e-mailových specialistů, databázových analytiků, onsite marketingu a QA. Přechod z vodopádu na agile (Lean, Six Sigma, Kanban, Scrumban, Scrum). E-mailing ve velkém pro statisíce až miliony příjemců.","Led a team of email specialists, database analysts, onsite marketing operations and QA. Led the transition from waterfall to agile (Lean, Six Sigma, Kanban, Scrumban, Scrum). Large-scale emailing to hundreds of thousands to millions of recipients.","Leitung eines Teams aus E-Mail-Spezialisten, Datenbankanalysten, Onsite-Marketing und QA. Übergang von Wasserfall zu Agile (Lean, Six Sigma, Kanban, Scrumban, Scrum). E-Mail-Versand an Hunderttausende bis Millionen Empfänger."]},
+ {id:"Z13",brand:"Feedo",brands:["Feedo"],roles:["cmo"],svc:[],ind:["ecom"],env:"startup",s:2014,e:2014,
+  role:["CMO","CMO","CMO"],
+  sum:["CMO první online drogerie v ČR se zaměřením na potřeby pro maminky s dětmi 0–3 let (CZ, SK, PL).","CMO of the first online drugstore in the Czech Republic, focused on products for mothers with children aged 0–3 (CZ, SK, PL).","CMO der ersten Online-Drogerie in Tschechien mit Fokus auf Produkte für Mütter mit Kindern von 0–3 Jahren (CZ, SK, PL)."],
+  det:["Redesign procesů, kampaní, webu a košíku přinesl rekordní tržby a nové zákazníky; CRO (struktura URL, SEO, remarketing, nové platební metody). ROI napříč prodeji 3×, Facebook jako prodejní kanál s ROI 4–8× a jednorázový rekord růstu 20 % meziměsíčně.","A redesign of processes, campaigns, web and checkout brought record revenues and new customers; CRO (URL structure, SEO, remarketing, new payment methods). ROI tripled across sales, Facebook as a sales channel at 4–8× ROI, and a one-off record of 20 % month-over-month growth.","Ein Redesign von Prozessen, Kampagnen, Website und Checkout brachte Rekordumsätze und Neukunden; CRO (URL-Struktur, SEO, Remarketing, neue Zahlungsarten). ROI über alle Verkäufe verdreifacht, Facebook als Vertriebskanal mit 4–8× ROI und ein einmaliger Rekord von 20 % Wachstum zum Vormonat."]},
+ {id:"Z14",p:"wunderman",brand:"Microsoft",sub:"via Wunderman (WPP)",brands:["Microsoft","Wunderman","WPP"],roles:["ops"],svc:["dpm"],ind:["web","dm"],env:"corp",s:2011,e:2014,
+  role:["Digital Operations Manager","Digital Operations Manager","Digital Operations Manager"],
+  sum:["Vedl jsem delivery týmy webů Microsoftu pro Evropu a za 2 roky rozšířil tým ze 4 na 30+ lidí.","Led delivery teams for Microsoft websites across Europe and grew the team from 4 to 30+ people in 2 years.","Leitung der Delivery-Teams für Microsoft-Websites in Europa und Wachstum des Teams von 4 auf über 30 Personen in 2 Jahren."],
+  det:["Lokalizace kampaní, redesigny a migrace pro 12 západoevropských trhů na microsoft.com; upravený proces Scrumban; technické SEO jako regionální služba; trvale nejlepší hodnocení klienta ze 4 globálních center Wundermanu.","Campaign localization, redesigns and migrations for 12 Western European markets on microsoft.com; a tailored Scrumban process; introduced technical SEO as a regional service; consistently the best client feedback among Wunderman's 4 global centres.","Lokalisierung von Kampagnen, Redesigns und Migrationen für 12 westeuropäische Märkte auf microsoft.com; angepasster Scrumban-Prozess; technisches SEO als regionaler Service; durchgehend das beste Kundenfeedback unter den 4 globalen Zentren von Wunderman."]},
+ {id:"Z15",p:"wunderman",brand:"Ford",sub:"via Wunderman",brands:["Ford","Wunderman"],roles:["ops"],svc:["dpm"],ind:["auto","dm"],env:"corp",s:2014,e:2014,
+  role:["Digital Operations Manager","Digital Operations Manager","Digital Operations Manager"],
+  sum:["Získal jsem zakázku a nabral úvodní tým pro správu kampaňových assetů Fordu v EU, který vyrostl na 120+ lidí.","Won the contract and hired the initial team for Ford's EU campaign asset management, which grew to 120+ people.","Auftrag gewonnen und das erste Team für das EU-Kampagnen-Asset-Management von Ford aufgebaut, das auf über 120 Personen wuchs."],det:["","",""]},
+ {id:"Z16",brand:"Bontia",brands:["Bontia"],roles:["prod"],svc:["pmpo"],ind:["ecom","print"],env:"startup",s:2010,e:2010,
+  role:["Produktový manažer","Product Manager","Produktmanager"],
+  sum:["Relaunch e-shopu s fotoknihami a spuštění v 6 zemích.","Relaunch of a photobook e-shop and launch in 6 countries.","Relaunch eines Fotobuch-E-Shops und Start in 6 Ländern."],
+  det:["Redesign, prodejní výkon, nové funkce, základní SEO a PPC; mezinárodní spuštění včetně překladů, dopravy, platebních metod a cen; hotline a partneři.","Redesign, sales performance, new features, basic SEO and PPC; international launch incl. translations, shipping, payment methods and pricing; hotline and partner management.","Redesign, Verkaufsleistung, neue Funktionen, Basis-SEO und PPC; internationaler Start inklusive Übersetzungen, Versand, Zahlungsarten und Preisen; Hotline und Partner."]},
+ {id:"Z17",brand:"Used-car retailer (CEE)",brandL:["Prodejce ojetých vozů (CEE)","Used-car retailer (CEE)","Gebrauchtwagenhändler (MOE)"],brands:[],roles:["web"],svc:["dpm"],ind:["auto","ecom"],env:"corp",s:2010,e:2010,
+  role:["Web Manager","Web Manager","Web Manager"],
+  sum:["Web manager prodejce ojetých vozů, který prodává tisíce aut měsíčně ve střední a východní Evropě.","Web manager for a used-car retailer selling thousands of cars per month across CEE.","Web Manager für einen Gebrauchtwagenhändler, der monatlich Tausende Autos in Mittel- und Osteuropa verkauft."],
+  det:["Long-tail SEO, které znásobilo návštěvnost vybraných kategorií; optimalizace výkonu webu s externí agenturou; úzká spolupráce s top managementem a CEO.","Long-tail SEO that multiplied traffic to selected categories; site performance optimization with an external agency; close work with top management and the CEO.","Long-Tail-SEO, das den Traffic ausgewählter Kategorien vervielfachte; Optimierung der Website-Performance mit einer externen Agentur; enge Zusammenarbeit mit Top-Management und CEO."]},
+ {id:"Z18",brand:"Siemens Real Estate",brands:["Siemens"],roles:["web"],svc:["dpm"],ind:["re","web"],env:"corp",s:2005,e:2009,
+  role:["Web Manager","Web Manager","Web Manager"],
+  sum:["Správa intranetových webů a portálů Siemens Real Estate v 15+ zemích na třech kontinentech.","Managed Siemens Real Estate intranet sites and portals in 15+ countries on three continents.","Betreuung der Intranet-Websites und Portale von Siemens Real Estate in über 15 Ländern auf drei Kontinenten."],
+  det:["Projektové řízení, SEO, výběr CMS, lokalizace, webdesign a kódování, migrace; vyhledávač lokalit nad Google Maps API; správa značky a CI celosvětově.","Project management, SEO, CMS selection, localization, web design and coding, migrations; a location finder built on the Google Maps API; brand and CI management worldwide.","Projektmanagement, SEO, CMS-Auswahl, Lokalisierung, Webdesign und Programmierung, Migrationen; ein Standortfinder auf Basis der Google Maps API; weltweites Marken- und CI-Management."]},
+ {id:"Z19",brand:"Gigaset",sub:"Siemens",brands:["Gigaset","Siemens"],roles:["web"],svc:["dpm"],ind:["ce","web"],env:"corp",s:2002,e:2005,
+  role:["Externista, web manager","Contractor, web manager","Freiberufler, Web Manager"],
+  sum:["Správa českého online portálu s lokální provozní podporou.","Managed the Czech online portal with local operational support.","Betreuung des tschechischen Online-Portals mit lokaler operativer Unterstützung."],
+  det:["Lokalizace, testování a produktový obsah.","Localization, testing and product content.","Lokalisierung, Tests und Produktinhalte."]},
+ {id:"Z21",brand:"Apple",sub:"Czech Data Systems",brands:["Apple"],roles:["wm"],svc:[],ind:["web"],env:"corp",s:1999,e:2002,
+  role:["Webmaster","Webmaster","Webmaster"],
+  sum:["Webmaster apple.cz a apple.sk včetně lokalizace webu a operačního systému.","Webmaster for apple.cz and apple.sk, incl. web and OS localization.","Webmaster für apple.cz und apple.sk, inklusive Lokalisierung von Website und Betriebssystem."],det:["","",""]}
+];
+const UMB={hive42:{brand:"Hive42 s.r.o.",s:2019,e:null,gold:true},wunderman:{brand:"Wunderman",s:2011,e:2014}};
+const PAGES={
+ "case-hoppygo":{eng:"Z11",kpis:[["#1","P2P car sharing v ČR","P2P car sharing in CZ","P2P-Carsharing in CZ"],["2099 %","růst (Deloitte Fast 50 CE 2022)","growth (Deloitte Fast 50 CE 2022)","Wachstum (Deloitte Fast 50 CE 2022)"],["6 → 30+","lidí v DigiLabu","people at DigiLab","Personen im DigiLab"]],
+  title:["HoppyGo: od nápadu k jedničce na trhu","HoppyGo: from idea to market leader","HoppyGo: von der Idee zum Marktführer"],
+  ctx:["ŠKODA AUTO DigiLab, inovační lab ŠKODA AUTO (koncern VW), testoval nové služby mobility startupovým způsobem.","ŠKODA AUTO DigiLab, the innovation lab of ŠKODA AUTO (Volkswagen Group), tested new mobility services the startup way.","ŠKODA AUTO DigiLab, das Innovationslabor von ŠKODA AUTO (Volkswagen-Konzern), testete neue Mobilitätsdienste nach Startup-Art."],
+  ch:["Převést nápad na P2P sdílení aut do živého produktu uvnitř korporace a obhájit business case.","Turn a P2P car sharing idea into a live product inside a corporate group and prove the business case.","Eine P2P-Carsharing-Idee innerhalb eines Konzerns in ein Live-Produkt überführen und den Business Case belegen."],
+  did:[["PM a PO s vlastním Scrum týmem: koncept, PoC, MVP, web a mobilní aplikace","Business case, KPI, řízení dodavatelů a schválení investice ŠKODA AUTO boardem","Jako COO DigiLabu: zavedení agile, IT migrace s auditem ISO 27001, nábor týmů; člen dozorčí rady HoppyGo"],["PM and PO with a dedicated Scrum team: concept, PoC, MVP, web and mobile app","Business case, KPIs, supplier management and board approval of the ŠKODA AUTO investment","As COO of DigiLab: introduced agile, IT migration with an ISO 27001 audit, team hiring; member of the HoppyGo Supervisory Board"],["PM und PO mit eigenem Scrum-Team: Konzept, PoC, MVP, Web und Mobile App","Business Case, KPIs, Lieferantenmanagement und Freigabe der ŠKODA-AUTO-Investition durch den Vorstand","Als COO des DigiLab: Einführung von Agile, IT-Migration mit ISO-27001-Audit, Teamaufbau; Mitglied im Aufsichtsrat von HoppyGo"]],
+  res:["HoppyGo se stalo jedničkou P2P car sharingu v ČR, expandovalo do zahraničí a v Deloitte Technology Fast 50 CE 2022 se umístilo v top 5 nejrychleji rostoucích firem.","HoppyGo became the #1 P2P car sharing in the Czech Republic, expanded abroad and was named among the top 5 fastest growing companies in Deloitte Technology Fast 50 CE 2022.","HoppyGo wurde Nummer 1 im tschechischen P2P-Carsharing, expandierte ins Ausland und zählte im Deloitte Technology Fast 50 CE 2022 zu den Top 5 der am schnellsten wachsenden Unternehmen."],
+  tools:"Scrum · Kanban · Lean · ISO 27001"},
+ "case-adecco":{eng:"Z10",kpis:[["MVP","s Amazonem jako klientem","with Amazon as client","mit Amazon als Kunde"],["2×","velocity do 2 měsíců","velocity within 2 months","Velocity in 2 Monaten"],["5+","zemí","countries","Länder"]],
+  title:["Adecco: záchrana AI chatbota a spuštění s Amazonem","Adecco: an AI chatbot rescued and launched with Amazon","Adecco: ein KI-Chatbot gerettet und mit Amazon gestartet"],
+  ctx:["Career Assistant je AI chatbot, který zrychluje první fázi náboru kombinací předdefinovaných a NLP konverzací.","Career Assistant is an AI chatbot that speeds up the first phase of recruitment by combining predefined and NLP-driven conversations.","Career Assistant ist ein KI-Chatbot, der die erste Recruiting-Phase durch vordefinierte und NLP-gesteuerte Dialoge beschleunigt."],
+  ch:["Projekt byl přes rok ve vývoji u externího dodavatele, nikdy nebyl spuštěný a neměl jasný plán ani priority.","The project had been in development with an external supplier for over a year, was never released and had no clear plan or priorities.","Das Projekt war über ein Jahr bei einem externen Dienstleister in Entwicklung, nie veröffentlicht und ohne klaren Plan und klare Prioritäten."],
+  did:[["Předání novému internímu týmu, nový backlog a sprint planning","Refaktoring a testy (UX, výkon, bezpečnost, compliance), schválení právními, bezpečnostními a compliance komisemi","DevOps proces pro podporu klientů i nový vývoj; redesign k self-service s automatickou kontrolou compliance a reportingem v Power BI"],["Handover to a new internal team, a rebuilt backlog and sprint planning","Refactoring and testing (UX, performance, security, compliance), approval by legal, security and compliance boards","A DevOps process for client support and new development; a redesign toward self-service with automated compliance checks and Power BI reporting"],["Übergabe an ein neues internes Team, neues Backlog und Sprint Planning","Refactoring und Tests (UX, Performance, Sicherheit, Compliance), Freigabe durch Rechts-, Sicherheits- und Compliance-Gremien","DevOps-Prozess für Kundensupport und Neuentwicklung; Redesign zu Self-Service mit automatischen Compliance-Prüfungen und Power-BI-Reporting"]],
+  res:["MVP s Amazonem zkrátilo první fázi náboru ze 2 měsíců na 2 týdny, řešení běží v 5+ zemích a projekt byl nominován do top 10 projektů roku Adecco Group a postoupil do top 3.","The MVP with Amazon cut the first recruitment phase from 2 months to 2 weeks, the solution runs in 5+ countries, and the project was nominated to the Adecco Group top 10 projects of the year and advanced to the top 3.","Das MVP mit Amazon verkürzte die erste Recruiting-Phase von 2 Monaten auf 2 Wochen, die Lösung läuft in über 5 Ländern, und das Projekt wurde für die Top 10 Projekte des Jahres der Adecco Group nominiert und kam unter die Top 3."],
+  tools:"Azure · Azure DevOps · .NET · C# · React · Power BI"},
+ "case-bmw":{eng:"Z06",kpis:[["40+","zemí","countries","Länder"],["~200","lidí v programu","people in the programme","Personen im Programm"],["2","značky (BMW, MINI)","brands (BMW, MINI)","Marken (BMW, MINI)"]],
+  title:["BMW & MINI: Digital Vehicle Sales","BMW & MINI: Digital Vehicle Sales","BMW & MINI: Digital Vehicle Sales"],
+  ctx:["Transformace prodeje aut BMW a MINI od dealerské sítě k přímému online prodeji, B2C i B2B, ve dvou prodejních modelech a 40+ zemích.","The transformation of BMW and MINI car sales from dealer networks to direct online sales, B2C and B2B, across two sales models and 40+ countries.","Die Transformation des BMW- und MINI-Verkaufs vom Händlernetz zum direkten Online-Vertrieb, B2C und B2B, in zwei Vertriebsmodellen und über 40 Ländern."],
+  ch:["Program o ~200 lidech (Product Owner a 6+ sub-PO se Scrum týmy) musel ladit plány se dvěma podobně velkými programy a se silnými závislostmi.","A programme of ~200 people (Product Owner and 6+ sub-POs with Scrum teams) had to align plans with two similarly sized programmes, with strong interdependencies.","Ein Programm mit ~200 Personen (Product Owner und 6+ Sub-POs mit Scrum-Teams) musste seine Planung mit zwei ähnlich großen Programmen abstimmen, bei starken Abhängigkeiten."],
+  did:[["Podpora portfolio týmu přes Berylls: roadmapa, specifikace, refinement a prioritizace backlogu","Jira admin: Advanced Roadmaps, Kanban boardy, labeling, hromadné úpravy, automatizovaná příprava kvartálního PI planningu v Confluence","Spolupráce s týmem nákupního košíku (první MVP v Koreji: rezervace prémiových elektromobilů)"],["Portfolio team support via Berylls: roadmap, specifications, backlog refinement and prioritization","Jira admin: Advanced Roadmaps, Kanban boards, labeling, mass updates, automated quarterly PI planning preparation in Confluence","Worked with the shopping cart team (first MVP in Korea: reservations of premium electric vehicles)"],["Unterstützung des Portfolio-Teams über Berylls: Roadmap, Spezifikationen, Backlog-Refinement und Priorisierung","Jira-Admin: Advanced Roadmaps, Kanban-Boards, Labeling, Massenänderungen, automatisierte Vorbereitung des quartalsweisen PI Planning in Confluence","Zusammenarbeit mit dem Warenkorb-Team (erstes MVP in Korea: Reservierung von Premium-Elektrofahrzeugen)"]],
+  res:["Roadmapa a plán vývoje a releasů sladěný pro 40+ zemí a dvě značky v SAFe nastavení.","A development and release roadmap aligned for 40+ countries and two brands in a SAFe setup.","Eine Entwicklungs- und Release-Roadmap, abgestimmt für über 40 Länder und zwei Marken in einem SAFe-Setup."],
+  tools:"SAFe · Scrum · Jira · Confluence"},
+ "case-metro":{eng:"Z01",kpis:[["ISS","cíl experimentu","target of the experiment","Ziel des Experiments"],["4","partneři konsorcia","consortium partners","Konsortialpartner"],["ESA","financování","funding","Finanzierung"]],
+  title:["METRO: český experiment pro ISS","METRO: a Czech experiment for the ISS","METRO: ein tschechisches Experiment für die ISS"],
+  ctx:["METRO (MEtabolic gases TRansfer for Optimised algae growth) zkoumá přestup plynů při kultivaci mikrořasy Chlorella vulgaris v mikrogravitaci. Je financovaný z rozpočtu ČR přes ESA.","METRO (MEtabolic gases TRansfer for Optimised algae growth) studies gas transfer in the cultivation of the microalga Chlorella vulgaris in microgravity. It is funded by the Czech Republic through ESA.","METRO (MEtabolic gases TRansfer for Optimised algae growth) untersucht den Gasaustausch bei der Kultivierung der Mikroalge Chlorella vulgaris in Mikrogravitation. Finanziert von der Tschechischen Republik über die ESA."],
+  ch:["Sladit čtyři partnery (ČVUT – vedení a inženýrství, ÚCHP AV ČR – vědecký partner, esc Aerospace – software a řídicí systémy, SVT – projektové řízení) na cestě k hardwaru pro vesmír podle standardů ECSS.","Align four partners (Czech Technical University – lead and engineering, Institute of Chemical Process Fundamentals of the Czech Academy of Sciences – science, esc Aerospace – software and control systems, SVT – project management) on the way to space-ready hardware under ECSS standards.","Vier Partner abstimmen (Tschechische Technische Universität – Leitung und Engineering, Institut für chemische Prozessgrundlagen – Wissenschaft, esc Aerospace – Software und Steuerung, SVT – Projektmanagement) auf dem Weg zu weltraumtauglicher Hardware nach ECSS-Standards."],
+  did:[["Externí projektové řízení za SVT: plánování a koordinace konsorcia","Práce podle standardů ECSS","Podpora testů: část hardwaru letěla na studentské raketě Andromeda 2 (CTU Space Research) kvůli simulaci mikrogravitace"],["External project management for SVT: planning and coordination of the consortium","Working to ECSS standards","Test support: part of the hardware flew on the student rocket Andromeda 2 (CTU Space Research) to simulate microgravity"],["Externes Projektmanagement für SVT: Planung und Koordination des Konsortiums","Arbeit nach ECSS-Standards","Testunterstützung: Ein Teil der Hardware flog auf der Studentenrakete Andromeda 2 (CTU Space Research) zur Simulation von Mikrogravitation"]],
+  res:["Projekt běží (2026 – dosud).","The project is in progress (2026 – present).","Das Projekt läuft (2026 – heute)."],
+  tools:"ECSS · Project management"},
+ "case-ebay":{eng:"Z12",kpis:[["EU → global","pokrytí delivery","delivery coverage","Delivery-Abdeckung"],["→ Agile","přechod z vodopádu","from waterfall","weg vom Wasserfall"]],
+  title:["eBay Enterprise: pražské delivery centrum","eBay Enterprise: the Prague delivery centre","eBay Enterprise: das Prager Delivery-Zentrum"],
+  ctx:["eBay Enterprise Marketing Solutions (později prodané Zeta Interactive) otevřelo v Praze delivery centrum pro marketingovou komunikaci eBay se zákazníky v EU.","eBay Enterprise Marketing Solutions (later sold to Zeta Interactive) opened a Prague delivery centre for eBay's EU customer marketing communications.","eBay Enterprise Marketing Solutions (später an Zeta Interactive verkauft) eröffnete in Prag ein Delivery-Zentrum für die Kundenmarketing-Kommunikation von eBay in der EU."],
+  ch:["Pomoci škálovat nové pražské centrum: rozšiřovat tým, nastavit lokální finanční a právní procesy a zajistit spolehlivou delivery.","Help scale the new Prague centre: grow the team, set up local finance and legal processes and ensure reliable delivery.","Das neue Prager Zentrum mit skalieren: das Team ausbauen, lokale Finanz- und Rechtsprozesse aufsetzen und verlässliche Delivery sicherstellen."],
+  did:[["Nábor a vedení týmu (e-mailoví specialisté, databázoví analytici, onsite marketing, QA)","Jako vedoucí centra: smlouvy, SOW a SLA, rozpočty, forecasting, nábor, partneři","Přechod z vodopádu na agile (Lean, Six Sigma, Kanban, Scrumban, Scrum)"],["Hired and led the team (email specialists, database analysts, onsite marketing operations, QA)","As Head of Prague Center: contracts, SOW and SLA, budgets, forecasting, hiring, partners","Transition from waterfall to agile (Lean, Six Sigma, Kanban, Scrumban, Scrum)"],["Aufbau und Führung des Teams (E-Mail-Spezialisten, Datenbankanalysten, Onsite-Marketing, QA)","Als Leiter des Prager Zentrums: Verträge, SOW und SLA, Budgets, Forecasting, Recruiting, Partner","Übergang von Wasserfall zu Agile (Lean, Six Sigma, Kanban, Scrumban, Scrum)"]],
+  res:["Delivery se rozšířila z EU na globální pokrytí; tucty kampaní týdně a e-mailing pro statisíce až miliony příjemců.","Delivery scaled from EU to global coverage; dozens of campaigns per week and emailing to hundreds of thousands to millions of recipients.","Die Delivery wuchs von der EU auf globale Abdeckung; Dutzende Kampagnen pro Woche und E-Mail-Versand an Hunderttausende bis Millionen Empfänger."],
+  tools:"CRM · Marketing automation · Lean · Six Sigma · Scrumban"}
+};
+const CASES=["case-metro","case-bmw","case-adecco","case-hoppygo","case-ebay"];
+const GROUPS=[{k:"svc",lab:"svcL",get:d=>d.svc,name:(v,li)=>SV[v].name[li],order:["dpm","pmpo","at","sm"],count:true},{k:"role",lab:"roles",get:d=>d.roles,name:(v,li)=>L.role[v][li],count:true},{k:"ind",lab:"ind",get:d=>d.ind,name:(v,li)=>L.ind[v][li],count:true},{k:"env",lab:"env",get:d=>[d.env],name:(v,li)=>L.env[v][li],count:true},{k:"brand",lab:"brands",get:d=>d.brands,name:v=>v,count:false}];
+const LG={"cs": {"smHome": "Úvodní stránka", "smLegal": "Právní informace", "privT": "Ochrana osobních údajů", "ckFoot": "Nastavení cookies", "ckT": "Cookies na tomto webu", "ckP": "Nezbytné cookies zajišťují fungování webu. S vaším souhlasem použiji i analytické cookies (Google Analytics) ke zlepšování webu a marketingové cookies (Google Ads, Meta) k měření a cílení reklamy. Volbu můžete kdykoli změnit v patičce pod odkazem Nastavení cookies.", "ckAll": "Přijmout vše", "ckNone": "Odmítnout vše", "ckSet": "Nastavení", "ckSave": "Uložit výběr", "ckNec": "Nezbytné", "ckNecD": "Fungování webu a uložení vaší volby cookies.", "ckOn": "Vždy aktivní", "ckAn": "Analytické", "ckAnD": "Google Analytics 4: statistiky návštěvnosti webu.", "ckMk": "Marketingové", "ckMkD": "Google Ads a Meta Pixel: měření konverzí a cílení reklamy.", "ckProto": "Prototyp: měřicí skripty se zatím nenačítají, volba se ukládá jen ve vašem prohlížeči.", "fPriv": "Údaje z formuláře použiji jen k odpovědi na vaši zprávu. Podrobnosti najdete v dokumentu", "privUpd": "Platné od [datum spuštění webu]", "privNote": "Návrh textu pro prototyp. Před spuštěním doplnit zbývající údaje v hranatých závorkách a nechat zkontrolovat (W9).", "priv": [["Správce", "Správcem osobních údajů je Hive42 s.r.o., IČO 07859490, se sídlem Bedlová 61, Pitkovice, 104 00 Praha 22, zapsaná v obchodním rejstříku vedeném Městským soudem v Praze, oddíl C, vložka 308220. Kontaktovat mě můžete přes formulář na tomto webu."], ["Kontaktní formulář", "Zpracovávám jméno, firmu, e-mail a text zprávy, abych mohl odpovědět na vaši poptávku a jednat o případné spolupráci. Právním základem je jednání o smlouvě a oprávněný zájem. Zprávy uchovávám nejdéle [2 roky] od poslední komunikace, pokud z nich nevznikne smluvní vztah."], ["Cookies a měření", "Nezbytné cookies ukládají vaši volbu cookies. Analytické cookies (Google Analytics 4) a marketingové cookies (Google Ads, Meta Pixel) se načtou jen s vaším souhlasem; do té doby se měřicí skripty nespustí (Google Consent Mode v2). Souhlas můžete kdykoli změnit nebo odvolat pod odkazem Nastavení cookies v patičce."], ["Příjemci a předání mimo EU", "Údaje zpracovávají poskytovatelé hostingu a odesílání formuláře [doplnit] a s vaším souhlasem Google Ireland Ltd. a Meta Platforms Ireland Ltd. Případné předání do USA probíhá na základě rámce EU-US Data Privacy Framework nebo standardních smluvních doložek."], ["Vaše práva", "Máte právo na přístup ke svým údajům, jejich opravu, výmaz, omezení zpracování a přenositelnost a právo vznést námitku. Souhlas s cookies můžete kdykoli odvolat. Stížnost můžete podat u Úřadu pro ochranu osobních údajů (uoou.gov.cz)."]]}, "en": {"smHome": "Home page", "smLegal": "Legal", "privT": "Privacy policy", "ckFoot": "Cookie settings", "ckT": "Cookies on this site", "ckP": "Necessary cookies keep the site working. With your consent I also use analytics cookies (Google Analytics) to improve the site and marketing cookies (Google Ads, Meta) to measure and target ads. You can change your choice at any time via Cookie settings in the footer.", "ckAll": "Accept all", "ckNone": "Reject all", "ckSet": "Settings", "ckSave": "Save choice", "ckNec": "Necessary", "ckNecD": "Site operation and storing your cookie choice.", "ckOn": "Always on", "ckAn": "Analytics", "ckAnD": "Google Analytics 4: website traffic statistics.", "ckMk": "Marketing", "ckMkD": "Google Ads and Meta Pixel: conversion measurement and ad targeting.", "ckProto": "Prototype: no tracking scripts are loaded yet; your choice is stored only in your browser.", "fPriv": "I use the details from this form only to reply to your message. Details in the", "privUpd": "Effective from [site launch date]", "privNote": "Draft text for the prototype. Before launch, fill in the remaining items in square brackets and have it reviewed (W9).", "priv": [["Controller", "The controller of personal data is Hive42 s.r.o., company ID 07859490, registered office Bedlová 61, Pitkovice, 104 00 Prague 22, Czech Republic, registered in the Commercial Register kept by the Municipal Court in Prague, section C, file 308220. You can contact me via the form on this website."], ["Contact form", "I process your name, company, e-mail and message to reply to your enquiry and discuss a possible collaboration. The legal basis is steps prior to entering into a contract and legitimate interest. I keep messages for no longer than [2 years] after our last communication unless a contract follows."], ["Cookies and analytics", "Necessary cookies store your cookie choice. Analytics cookies (Google Analytics 4) and marketing cookies (Google Ads, Meta Pixel) load only with your consent; until then no tracking scripts run (Google Consent Mode v2). You can change or withdraw consent at any time via Cookie settings in the footer."], ["Recipients and transfers outside the EU", "Data is processed by the hosting and form-delivery providers [to be added] and, with your consent, by Google Ireland Ltd. and Meta Platforms Ireland Ltd. Any transfer to the USA relies on the EU-US Data Privacy Framework or standard contractual clauses."], ["Your rights", "You have the right to access, rectify and erase your data, to restrict processing, to data portability and to object. You can withdraw cookie consent at any time. You may lodge a complaint with the Czech Office for Personal Data Protection (uoou.gov.cz)."]]}, "de": {"smHome": "Startseite", "smLegal": "Rechtliches", "privT": "Datenschutzerklärung", "ckFoot": "Cookie-Einstellungen", "ckT": "Cookies auf dieser Website", "ckP": "Notwendige Cookies sorgen dafür, dass die Website funktioniert. Mit Ihrer Einwilligung nutze ich außerdem Analyse-Cookies (Google Analytics) zur Verbesserung der Website und Marketing-Cookies (Google Ads, Meta) zur Messung und Ausspielung von Werbung. Sie können Ihre Wahl jederzeit über Cookie-Einstellungen in der Fußzeile ändern.", "ckAll": "Alle akzeptieren", "ckNone": "Alle ablehnen", "ckSet": "Einstellungen", "ckSave": "Auswahl speichern", "ckNec": "Notwendig", "ckNecD": "Betrieb der Website und Speicherung Ihrer Cookie-Auswahl.", "ckOn": "Immer aktiv", "ckAn": "Analyse", "ckAnD": "Google Analytics 4: Statistiken zur Website-Nutzung.", "ckMk": "Marketing", "ckMkD": "Google Ads und Meta Pixel: Conversion-Messung und Werbeausspielung.", "ckProto": "Prototyp: Es werden noch keine Tracking-Skripte geladen; Ihre Wahl wird nur in Ihrem Browser gespeichert.", "fPriv": "Die Angaben aus diesem Formular nutze ich nur, um Ihre Nachricht zu beantworten. Einzelheiten in der", "privUpd": "Gültig ab [Startdatum der Website]", "privNote": "Textentwurf für den Prototyp. Vor dem Start die übrigen Angaben in eckigen Klammern ergänzen und prüfen lassen (W9).", "priv": [["Verantwortlicher", "Verantwortlich für die Verarbeitung personenbezogener Daten ist die Hive42 s.r.o., Id.-Nr. 07859490, Sitz Bedlová 61, Pitkovice, 104 00 Prag 22, Tschechische Republik, eingetragen im Handelsregister beim Stadtgericht Prag, Abteilung C, Einlage 308220. Sie erreichen mich über das Formular auf dieser Website."], ["Kontaktformular", "Ich verarbeite Name, Unternehmen, E-Mail und Nachricht, um Ihre Anfrage zu beantworten und eine mögliche Zusammenarbeit zu besprechen. Rechtsgrundlage sind vorvertragliche Maßnahmen und berechtigtes Interesse. Nachrichten bewahre ich höchstens [2 Jahre] nach der letzten Kommunikation auf, sofern kein Vertrag zustande kommt."], ["Cookies und Analyse", "Notwendige Cookies speichern Ihre Cookie-Auswahl. Analyse-Cookies (Google Analytics 4) und Marketing-Cookies (Google Ads, Meta Pixel) werden nur mit Ihrer Einwilligung geladen; bis dahin laufen keine Tracking-Skripte (Google Consent Mode v2). Sie können Ihre Einwilligung jederzeit über Cookie-Einstellungen in der Fußzeile ändern oder widerrufen."], ["Empfänger und Übermittlung außerhalb der EU", "Die Daten verarbeiten die Anbieter für Hosting und Formularversand [ergänzen] sowie mit Ihrer Einwilligung Google Ireland Ltd. und Meta Platforms Ireland Ltd. Eine etwaige Übermittlung in die USA erfolgt auf Grundlage des EU-US Data Privacy Framework oder von Standardvertragsklauseln."], ["Ihre Rechte", "Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Ihre Cookie-Einwilligung können Sie jederzeit widerrufen. Beschwerden können Sie bei der tschechischen Datenschutzbehörde (uoou.gov.cz) einreichen."]]}};
+/* cookie consent (U4): categories necessary / analytics / marketing; maps to Google Consent Mode v2 on launch */
+const CK_KEY="h42consent",CK_VER=1;let ck=null,ckSet=false;
+try{const v=JSON.parse(localStorage.getItem(CK_KEY));if(v&&v.v===CK_VER)ck=v}catch(e){}
+function saveCk(an,mk){ck={v:CK_VER,an:!!an,mk:!!mk,ts:new Date().toISOString()};try{localStorage.setItem(CK_KEY,JSON.stringify(ck))}catch(e){}
+ /* on launch: gtag("consent","update",{analytics_storage:an?"granted":"denied",ad_storage:mk?"granted":"denied",ad_user_data:mk?"granted":"denied",ad_personalization:mk?"granted":"denied"}) */
+ $("#ck").hidden=true;ckSet=false;ckOffset()}
+function openCk(settings){ckSet=!!settings;renderCk();$("#ck").hidden=false;if(typeof ckOffset==="function")ckOffset()}
+function renderCk(){const b=$("#ckBox");if(!b)return;const an=ck?ck.an:false,mk=ck?ck.mk:false;
+ b.innerHTML=`<h2 id="ckT">${esc(t("ckT"))}</h2><p>${esc(t("ckP"))} <a href="#privacy">${esc(t("privT"))}</a></p>`+
+  (ckSet?`<div><div class="cat"><b>${esc(t("ckNec"))}</b><span class="on">${esc(t("ckOn"))}</span><small>${esc(t("ckNecD"))}</small></div>
+  <label class="cat" for="ck-an"><b>${esc(t("ckAn"))}</b><input type="checkbox" id="ck-an" ${an?"checked":""}><small>${esc(t("ckAnD"))}</small></label>
+  <label class="cat" for="ck-mk"><b>${esc(t("ckMk"))}</b><input type="checkbox" id="ck-mk" ${mk?"checked":""}><small>${esc(t("ckMkD"))}</small></label></div>`:"")+
+  `<div class="acts"><button type="button" class="btn" id="ckNone">${esc(t("ckNone"))}</button><button type="button" class="btn" id="ckAll">${esc(t("ckAll"))}</button><span class="sp"></span>${ckSet?`<button type="button" class="btn ghost" id="ckSave">${esc(t("ckSave"))}</button>`:`<button type="button" class="btn ghost" id="ckSetB">${esc(t("ckSet"))}</button>`}</div><div class="proto-n">${esc(t("ckProto"))}</div>`;
+ $("#ckNone").onclick=()=>saveCk(false,false);$("#ckAll").onclick=()=>saveCk(true,true);
+ const sb=$("#ckSetB");if(sb)sb.onclick=()=>openCk(true);
+ const sv=$("#ckSave");if(sv)sv.onclick=()=>saveCk($("#ck-an").checked,$("#ck-mk").checked);}
+function pagePrivacy(){return `<a class="back" href="#home">${esc(t("back"))}</a><span class="eyebrow">${esc(t("smLegal"))}</span><h1>${esc(t("privT"))}</h1><p class="lead">${esc(t("privUpd"))}</p><div class="legal">${t("priv").map(([h,p])=>`<h2>${esc(h)}</h2><p>${esc(p)}</p>`).join("")}<p class="note">${esc(t("privNote"))}</p><p style="margin-top:16px"><button type="button" class="btn ghost ck-open2">${esc(t("ckFoot"))}</button></p></div>`}
+document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest(".ck-open2"))openCk(true)});
+const LANGS=["cs","en","de"];
+const AD={"cs": {"open": "Admin · Zobrazit ▴", "close": "Admin · Skrýt ▾", "hProto": "Prototyp", "hLink": "Odkaz na tento pohled", "hLook": "Vzhled úvodní stránky", "hMap": "Mapa stránek", "hTools": "Nástroje", "toolLink": "Odkazy pro klienty: vytvoření a kontrola odkazů →", "copy": "Kopírovat", "copied": "Zkopírováno", "selected": "Označeno – Ctrl+C", "inYes": "při otevření dorazilo: ", "inNo": "při otevření nedorazilo nic za #", "lv": ["Současný", "Tmavý úvod", "Na střed", "Velká fotka", "Minimal"], "intern": "Interní", "lkT": "Odkazy pro klienty", "lkLead": "Vytvoření odkazu se štítkem klienta (ref) a kontrola starých odkazů proti aktuálnímu webu. Staré klíče překládá tabulka aliasů automaticky a návštěvník nic nepozná (D4 = A).", "lkH1": "1. Vytvořit odkaz", "lkUrl": "Odkaz (zkopíruj z panelu Admin po nastavení filtrů)", "lkRef": "Štítek klienta (ref, neutrální, např. název firmy)", "lkMake": "Vytvořit", "lkOut1": "Odkaz pro klienta", "lkOut2": "Řádek do links.csv v repozitáři", "lkH2": "2. Zkontrolovat odkazy", "lkIn": "Jeden odkaz na řádek (může být i celý řádek z links.csv)", "lkCheck": "Zkontrolovat", "thSt": "Stav", "thLink": "Odkaz", "thNow": "Dnes vede na", "thNotes": "Poznámky", "stOk": "OK", "stAlias": "Přesměrováno", "stDrop": "Částečně ztraceno", "lkAl": "Aktuální aliasy", "nPage": "stránka {a} → {b}", "nUnkPage": "neznámá stránka {a} → úvod", "nParam": "parametr {a} → {b}", "nUnkParam": "neznámý parametr {a}", "nLang": "jazyk {a}", "nView": "pohled {a}", "nRemoved": "odstraněno", "nEng": "zakázka {a} neexistuje", "nGone": "{a} už neexistuje"}, "en": {"open": "Admin · Show ▴", "close": "Admin · Hide ▾", "hProto": "Prototype", "hLink": "Link to this view", "hLook": "Home page layout", "hMap": "Sitemap", "hTools": "Tools", "toolLink": "Client links: create and check links →", "copy": "Copy", "copied": "Copied", "selected": "Selected – Ctrl+C", "inYes": "arrived on opening: ", "inNo": "nothing after # arrived on opening", "lv": ["Current", "Dark intro", "Centred", "Large photo", "Minimal"], "intern": "Internal", "lkT": "Client links", "lkLead": "Create a link with a client label (ref) and check old links against the current site. Old keys are translated automatically by the alias table and visitors notice nothing (D4 = A).", "lkH1": "1. Create a link", "lkUrl": "Link (copy it from the Admin panel after setting filters)", "lkRef": "Client label (ref, neutral, e.g. company name)", "lkMake": "Create", "lkOut1": "Link for the client", "lkOut2": "Line for links.csv in the repository", "lkH2": "2. Check links", "lkIn": "One link per line (a whole line from links.csv works too)", "lkCheck": "Check", "thSt": "Status", "thLink": "Link", "thNow": "Leads to today", "thNotes": "Notes", "stOk": "OK", "stAlias": "Redirected", "stDrop": "Partly lost", "lkAl": "Current aliases", "nPage": "page {a} → {b}", "nUnkPage": "unknown page {a} → home", "nParam": "parameter {a} → {b}", "nUnkParam": "unknown parameter {a}", "nLang": "language {a}", "nView": "view {a}", "nRemoved": "removed", "nEng": "engagement {a} does not exist", "nGone": "{a} no longer exists"}, "de": {"open": "Admin · Anzeigen ▴", "close": "Admin · Ausblenden ▾", "hProto": "Prototyp", "hLink": "Link zu dieser Ansicht", "hLook": "Layout der Startseite", "hMap": "Sitemap", "hTools": "Werkzeuge", "toolLink": "Kundenlinks: Links erstellen und prüfen →", "copy": "Kopieren", "copied": "Kopiert", "selected": "Markiert – Strg+C", "inYes": "beim Öffnen angekommen: ", "inNo": "beim Öffnen kam nach # nichts an", "lv": ["Aktuell", "Dunkles Intro", "Zentriert", "Großes Foto", "Minimal"], "intern": "Intern", "lkT": "Kundenlinks", "lkLead": "Link mit Kundenkennung (ref) erstellen und alte Links gegen die aktuelle Website prüfen. Alte Schlüssel übersetzt die Alias-Tabelle automatisch, Besucher merken nichts (D4 = A).", "lkH1": "1. Link erstellen", "lkUrl": "Link (nach dem Filtern aus dem Admin-Panel kopieren)", "lkRef": "Kundenkennung (ref, neutral, z. B. Firmenname)", "lkMake": "Erstellen", "lkOut1": "Link für den Kunden", "lkOut2": "Zeile für links.csv im Repository", "lkH2": "2. Links prüfen", "lkIn": "Ein Link pro Zeile (auch ganze Zeilen aus links.csv)", "lkCheck": "Prüfen", "thSt": "Status", "thLink": "Link", "thNow": "Führt heute zu", "thNotes": "Hinweise", "stOk": "OK", "stAlias": "Umgeleitet", "stDrop": "Teilweise verloren", "lkAl": "Aktuelle Aliase", "nPage": "Seite {a} → {b}", "nUnkPage": "unbekannte Seite {a} → Startseite", "nParam": "Parameter {a} → {b}", "nUnkParam": "unbekannter Parameter {a}", "nLang": "Sprache {a}", "nView": "Ansicht {a}", "nRemoved": "entfernt", "nEng": "Projekt {a} existiert nicht", "nGone": "{a} existiert nicht mehr"}};
+const ta=(k,a,b)=>{const v=(AD[st.lang]||AD.cs)[k];return typeof v==="string"?v.replace("{a}",a??"").replace("{b}",b??""):v};
+const SECS=["services","experience","cases","contact"];
+const st={lang:"cs",svc:new Set(),role:new Set(),ind:new Set(),env:new Set(),brand:new Set(),view:"cards",open:new Set(),panel:null,ref:""};
+try{const s=localStorage.getItem("h42lang");if(LANGS.includes(s))st.lang=s}catch(e){}
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const li=()=>LANGS.indexOf(st.lang), t=k=>T[st.lang][k]??LG[st.lang][k];
+const yrs=(s,e)=>e===null?`${s} – ${t("present")}`:(s===e?`${s}`:`${s} – ${e}`);
+const bname=d=>d.brandL?d.brandL[li()]:d.brand;
+function matches(d,skip){return GROUPS.every(g=>{if(g.k===skip)return true;const sel=st[g.k];return !sel.size||g.get(d).some(v=>sel.has(v))})}
+const filtered=()=>D.filter(d=>matches(d));
+const anyF=()=>GROUPS.some(g=>st[g.k].size);
+function vals(g){if(g.order)return g.order;const s=new Set();D.forEach(d=>g.get(d).forEach(v=>s.add(v)));return [...s].sort((a,b)=>g.name(a,li()).localeCompare(g.name(b,li()),st.lang))}
+
+function i18nStatic(){document.documentElement.lang=st.lang;
+ document.querySelectorAll("[data-i]").forEach(el=>el.textContent=t(el.dataset.i));
+ $("#who").textContent=`Hive42 s.r.o. · ${t("name")} · ${t("footer")}`;
+ $("#facts").innerHTML=t("facts").map(f=>`<div><b>${esc(f[0])}</b>${esc(f[1])}</div>`).join("");
+ $("#protoMsg").innerHTML=t("proto");
+ document.querySelectorAll("[data-a]").forEach(el=>el.textContent=ta(el.dataset.a));
+ try{setAdm(!$("#admPanel").hidden);setLv(lv);showCur()}catch(e){}
+ try{requestAnimationFrame(centerHero)}catch(e){}
+ $("#fPriv").innerHTML=`${esc(t("fPriv"))} <a href="#privacy">${esc(t("privT"))}</a>.`;
+ renderCk();
+ document.querySelectorAll(".lang button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===st.lang));}
+
+function renderServices(){$("#svcGrid").innerHTML=Object.keys(SV).map(k=>{const n=D.filter(d=>d.svc.includes(k)).length;
+ return `<article class="svc"><span class="count">${esc(t("navExp"))} (${n})</span><h3><a href="#svc-${k}">${esc(SV[k].name[li()])}</a></h3><p>${esc(SV[k].text[li()])}</p><div class="links"><a href="#svc-${k}">${esc(t("svcMore"))}</a></div></article>`}).join("")}
+
+function renderFbar(){
+ $("#fbar").innerHTML=GROUPS.map(g=>{const n=st[g.k].size;return `<button type="button" class="fbtn" data-g="${g.k}" aria-expanded="${st.panel===g.k}" aria-controls="panel">${esc(t(g.lab))}${n?` <span class="sel">(${n})</span>`:""} <span class="car">▾</span></button>`}).join("")+
+  `<div class="seg" role="group" aria-label="View"><button type="button" data-v="cards" aria-pressed="${st.view==="cards"}">${esc(t("cards"))}</button><button type="button" data-v="timeline" aria-pressed="${st.view==="timeline"}">${esc(t("timeline"))}</button></div>`;
+ $("#fbar").querySelectorAll(".fbtn").forEach(b=>b.onclick=()=>{st.panel=st.panel===b.dataset.g?null:b.dataset.g;renderExp()});
+ $("#fbar").querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{st.view=b.dataset.v;renderExp()});
+}
+function renderPanel(){const p=$("#panel");if(!st.panel){p.hidden=true;return}p.hidden=false;
+ const g=GROUPS.find(x=>x.k===st.panel);
+ p.innerHTML=`<div class="opts">${vals(g).map(v=>{const n=D.filter(d=>matches(d,g.k)&&g.get(d).includes(v)).length;const on=st[g.k].has(v);const dis=!n&&!on;const id=`o-${g.k}-${v.replace(/[^a-z0-9]/gi,"")}`;
+  return `<label class="opt${dis?" dis":""}" for="${id}"><input type="checkbox" id="${id}" data-v="${esc(v)}" ${on?"checked":""} ${dis?"disabled":""}>${esc(g.name(v,li()))}${g.count?` <span class="n">(${n})</span>`:""}</label>`}).join("")}</div>
+  <div class="pfoot"><button type="button" class="linkbtn" id="pClear">${esc(t("clear"))}</button><button type="button" class="btn" id="pDone" style="padding:7px 14px">${esc(t("done"))}</button></div>`;
+ p.querySelectorAll("input").forEach(i=>i.onchange=()=>{const s=st[g.k];i.checked?s.add(i.dataset.v):s.delete(i.dataset.v);renderExp(true)});
+ $("#pClear").onclick=()=>{st[g.k].clear();renderExp(true)};
+ $("#pDone").onclick=()=>{st.panel=null;renderExp()};
+}
+function renderStatus(list){
+ $("#resCount").textContent=`${list.length} ${t("of")} ${D.length} ${t("results")}`;
+ const a=[];GROUPS.forEach(g=>st[g.k].forEach(v=>a.push(`<button type="button" class="achip" data-g="${g.k}" data-v="${esc(v)}">${esc(g.name(v,li()))} ✕</button>`)));
+ $("#activeFilters").innerHTML=a.join("")+(a.length?`<button type="button" class="linkbtn" id="clearAll">${esc(t("clear"))}</button>`:"");
+ $("#activeFilters").querySelectorAll(".achip").forEach(c=>c.onclick=()=>{st[c.dataset.g].delete(c.dataset.v);renderExp(true)});
+ const ca=$("#clearAll");if(ca)ca.onclick=()=>{GROUPS.forEach(g=>st[g.k].clear());renderExp(true)};
+}
+function matchTags(d){const sel=st.brand;if(!sel.size)return "";return d.brands.filter(b=>sel.has(b)&&b!==d.brand).map(b=>`<span class="tag match">${esc(t("matched"))}: ${esc(b)}</span>`).join("")}
+function card(d){const o=st.open.has(d.id),i=li();
+ const link=d.cs?`<a href="#${d.cs}">${esc(t("openCase"))}</a>`:d.page?`<a href="#${d.page}">${esc(t("openPage"))}</a>`:"";
+ return `<article class="card" id="c-${d.id}"><div class="head">
+  <span><span class="brand">${esc(bname(d))}</span>${d.sub?`<span class="sub"> · ${esc(d.sub)}</span>`:""}<br><span class="role">${esc(d.role[i])}</span></span>
+  <span class="yrs">${yrs(d.s,d.e)}</span>
+  <span class="sum">${esc(d.sum[i])}</span>
+  <div class="meta"><div class="tags">${matchTags(d)}${d.p?`<span class="tag h42">${esc(t("via"))} ${esc(UMB[d.p].brand)}</span>`:""}${d.svc.map(s=>`<span class="tag svc-t">${esc(SV[s].name[i])}</span>`).join("")}${d.cs?`<span class="tag cs">${esc(t("caseLink"))}</span>`:""}${d.page?`<span class="tag cs">${esc(t("pageLink"))}</span>`:""}</div>
+  <button type="button" class="toggle" aria-expanded="${o}" aria-controls="d-${d.id}" data-id="${d.id}">${esc(o?t("hide"):t("show"))}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>
+  <div class="detail" id="d-${d.id}" ${o?"":"hidden"}>${d.det[i]?`<p>${esc(d.det[i])}</p>`:""}
+  <dl><dt>${esc(t("ind"))}</dt><dd>${esc(d.ind.map(x=>L.ind[x][i]).join(", "))}</dd><dt>${esc(t("env"))}</dt><dd>${esc(L.env[d.env][i])}</dd>${d.brands.length?`<dt>${esc(t("brands"))}</dt><dd>${esc(d.brands.join(", "))}</dd>`:""}</dl>${link}</div></article>`}
+function renderCards(list){const el=$("#cardsView");
+ el.innerHTML=list.length?list.map(card).join(""):`<div class="empty">${esc(t("none"))} <button type="button" class="linkbtn" id="clear2">${esc(t("clear"))}</button></div>`;
+ el.querySelectorAll(".toggle").forEach(b=>b.onclick=()=>{const id=b.dataset.id;st.open.has(id)?st.open.delete(id):st.open.add(id);renderCards(filtered());syncUrl()});
+ const c2=$("#clear2");if(c2)c2.onclick=()=>{GROUPS.forEach(g=>st[g.k].clear());renderExp(true)};}
+function renderTimeline(list){const Y0=1999,Y1=NOW+1,span=Y1-Y0,pct=y=>((y-Y0)/span*100).toFixed(3)+"%",hit=new Set(list.map(d=>d.id)),f=anyF();
+ const w=(s1,e1)=>`left:${pct(s1)};width:calc(${pct((e1??NOW)+1)} - ${pct(s1)})`;
+ const row=(d,cls)=>`<div class="tl-row ${cls}${hit.has(d.id)?" hit":""}"><div class="lbl" title="${esc(bname(d))}">${cls==="child"?"":"<b>"}${esc(bname(d))}${cls==="child"?"":"</b>"} · ${yrs(d.s,d.e)}</div><div class="track"><button type="button" class="bar" style="${w(d.s,d.e)}" data-id="${d.id}" aria-label="${esc(bname(d))}, ${yrs(d.s,d.e)}"></button></div></div>`;
+ const kids=p=>D.filter(d=>d.p===p).sort((a,b)=>b.s-a.s);
+ const tops=D.filter(d=>!d.p).concat(Object.entries(UMB).map(([k,u])=>({id:k,umb:true,...u}))).sort((a,b)=>(b.e??9999)-(a.e??9999)||b.s-a.s);
+ let html="";tops.forEach(d=>{
+  if(d.umb){const ch=kids(d.id),anyHit=ch.some(c=>hit.has(c.id));
+   html+=`<div class="tl-row parent${anyHit?" hit":""}"><div class="lbl"><b>${esc(d.brand)}</b> · ${yrs(d.s,d.e)}</div><div class="track"><span class="band" style="${w(d.s,d.e)}"></span><span class="bar" style="${w(d.s,d.e)};position:absolute;top:2px;height:12px;border-radius:4px;background:${d.gold?"var(--gold)":"var(--muted)"}"></span></div></div>`;
+   ch.forEach(c=>html+=row(c,"child"));}
+  else html+=row(d,"");});
+ const ticks=[];for(let y=2000;y<=NOW;y+=2)ticks.push(`<span style="left:${pct(y+.5)}">${y}</span>`);
+ $("#timelineView").innerHTML=`<div class="tl-scroll"><div class="tl${f?" filtering":""}"><div class="tl-axis"><div></div><div class="yrs">${ticks.join("")}</div></div>${html}</div></div><p class="tl-note">${esc(t("tlNote"))}</p>`;
+ $("#timelineView").querySelectorAll("button.bar").forEach(b=>b.onclick=()=>openCard(b.dataset.id));}
+function openCard(id){GROUPS.forEach(g=>st[g.k].clear());st.open.add(id);st.view="cards";st.panel=null;renderExp();const c=$("#c-"+id);if(c){c.scrollIntoView({block:"start"});c.classList.add("flash");setTimeout(()=>c.classList.remove("flash"),1600)}}
+function renderExp(keepPanel){if(!keepPanel&&keepPanel!==undefined)st.panel=null;const list=filtered();renderFbar();renderPanel();renderStatus(list);
+ $("#cardsView").hidden=st.view!=="cards";$("#timelineView").hidden=st.view!=="timeline";
+ st.view==="cards"?renderCards(list):renderTimeline(list);syncUrl();}
+function renderCases(){$("#csGrid").innerHTML=CASES.map(k=>{const p=PAGES[k],d=D.find(x=>x.id===p.eng),i=li();
+ return `<a class="csc" href="#${k}"><span class="big">${esc(p.kpis[0][0])}</span><span class="t">${esc(p.title[i])}</span><span class="d">${esc(d.sum[i])}</span><span class="o">${esc(t("openCase"))}</span></a>`}).join("")}
+
+/* subpages */
+function relList(ids){const i=li();return `<div class="rel">${ids.map(id=>{const d=D.find(x=>x.id===id);const href=d.cs?`#${d.cs}`:d.page?`#${d.page}`:`#experience~open.${d.id}`;return `<a href="${href}"><span><b>${esc(bname(d))}</b> · ${esc(d.role[i])}</span><span>${yrs(d.s,d.e)}</span></a>`}).join("")}</div>`}
+function pageService(k){const s=SV[k],i=li(),rel=D.filter(d=>d.svc.includes(k)).map(d=>d.id);
+ return `<a class="back" href="#home">${esc(t("back"))}</a><span class="eyebrow">${esc(t("navSvc"))}</span><h1>${esc(s.name[i])}</h1><p class="lead">${esc(s.text[i])}</p>
+ <div class="cols"><div class="block"><h3>${esc(t("forWho"))}</h3><p>${esc(s.who[i])}</p><h3>${esc(t("outcomes"))}</h3><ul>${s.out[i].map(o=>`<li>${esc(o)}</li>`).join("")}</ul>
+ <h3>${esc(t("related"))} (${rel.length})</h3>${relList(rel)}<p style="margin-top:12px"><a href="#experience~svc.${k}">${esc(t("allRelated"))}</a></p></div>
+ <aside class="side"><div class="k">${esc(t("navContact"))}</div><div class="v">${esc(t("contactP"))}</div><a class="btn" href="#contact">${esc(t("ctaSvc"))}</a></aside></div>`}
+function pageCase(k){const p=PAGES[k],d=D.find(x=>x.id===p.eng),i=li();
+ return `<a class="back" href="#home">${esc(t("back"))}</a><span class="eyebrow">${esc(k.startsWith("case")?t("caseLink"):t("pageLink"))} · ${esc(bname(d))}</span><h1>${esc(p.title[i])}</h1><p class="lead">${esc(d.sum[i])}</p>
+ <div class="kpis">${p.kpis.map(x=>`<div><b>${esc(x[0])}</b>${esc(x[i+1])}</div>`).join("")}</div>
+ <div class="cols"><div class="block"><h3>${esc(t("context"))}</h3><p>${esc(p.ctx[i])}</p><h3>${esc(t("challenge"))}</h3><p>${esc(p.ch[i])}</p><h3>${esc(t("did"))}</h3><ul>${p.did[i].map(x=>`<li>${esc(x)}</li>`).join("")}</ul><h3>${esc(t("result"))}</h3><p>${esc(p.res[i])}</p></div>
+ <aside class="side"><div><div class="k">${esc(t("role"))}</div><div class="v">${esc(d.role[i])}</div></div><div><div class="k">${esc(t("years"))}</div><div class="v">${yrs(d.s,d.e)}</div></div><div><div class="k">${esc(t("roleTools"))}</div><div class="v">${esc(p.tools)}</div></div><div><div class="k">${esc(t("navSvc"))}</div><div class="v">${d.svc.map(s=>`<a href="#svc-${s}">${esc(SV[s].name[i])}</a>`).join("<br>")}</div></div><a class="btn" href="#contact">${esc(t("ctaSvc"))}</a></aside></div>`}
+let INTERNAL=false;try{INTERNAL=localStorage.getItem("h42internal")==="1"}catch(e){}
+function setInternal(v){INTERNAL=v;const tg=document.getElementById("intTgl");if(tg)tg.textContent=v?"Interní režim: zapnutý":"Interní režim: vypnutý";try{v?localStorage.setItem("h42internal","1"):localStorage.removeItem("h42internal")}catch(e){}document.documentElement.classList.toggle("internal",v)}
+setInternal(INTERNAL);
+/* ===== Deep links (D1–D4, 2026-10-29) =====
+   Format: #<section>?svc=..&role=..&ind=..&env=..&brand=..&view=timeline&open=Z10&lang=en&ref=client
+   Keys are language-neutral and frozen. Removed/renamed keys live in ALIASES forever (tombstones, never reused).
+   Old links are translated silently (D4 = A) and the address bar is rewritten to the current form. */
+const ALIASES={
+ params:{service:"svc",industry:"ind",environment:"env"},
+ svc:{},role:{},env:{},brand:{},
+ ind:{it:"web",intranet:"web"},                 // 2026-10-28: IT and Intranet merged into Web
+ open:{Z20:null},                               // Z20 Slovnaft hidden
+ pages:{"eng-ebay":"case-ebay","logo":"home"}   // 2026-10-28: eBay detail -> case study; logo page removed
+};
+const IN_HASH=location.hash||"";let CURHASH=location.hash||"#home";
+let IGNH=null;
+function setHash(h){CURHASH=h;if(location.hash===h)return;if(!h.includes("~")){try{history.replaceState(null,"",location.pathname+location.search+h)}catch(e){}return}
+ IGNH=h;try{location.replace(h)}catch(e){try{history.replaceState(null,"",location.pathname+location.search+h)}catch(e2){}}}
+const ART_BASE="https://claude.ai/artifact/HFrtytFqLyM56b7apR2Yqh";
+const IN_CLAUDE=/claudeusercontent\.com$/.test(location.hostname);
+const shareBase=()=>IN_CLAUDE?ART_BASE:location.href.split("#")[0];
+function showCur(){const i=$("#lkCur");if(i){i.value=shareBase()+CURHASH;i.scrollLeft=i.scrollWidth}const d=$("#lkIn0");if(d)d.textContent=IN_HASH?ta("inYes")+IN_HASH:ta("inNo")}
+const LPARAMS=["svc","role","ind","env","brand","view","open","lang","ref"];
+const bslug=n=>n.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const gKeys=g=>g.k==="brand"?vals(g).map(bslug):vals(g);
+const brandBySlug=sl=>vals(GROUPS.find(g=>g.k==="brand")).find(n=>bslug(n)===sl);
+function parseLink(raw){const notes=[];let [h,q]=raw.split("?");q=q||"";if(!q&&h.includes("~")){const ps=h.split("~");h=ps.shift();q=ps.filter(Boolean).map(x=>{const i=x.indexOf(".");return i<0?x+"=":x.slice(0,i)+"="+x.slice(i+1).replace(/_/g,",")}).join("&")}h=h||"home";
+ let m;
+ if((m=h.match(/^exps-(\w+)$/))){notes.push(["alias",`#${h} → #experience?svc=${m[1]}`]);q=`svc=${m[1]}`+(q?"&"+q:"");h="experience"}
+ else if((m=h.match(/^exp-(Z\d+)$/))){notes.push(["alias",`#${h} → #experience?open=${m[1]}`]);q=`open=${m[1]}`+(q?"&"+q:"");h="experience"}
+ if(Object.prototype.hasOwnProperty.call(ALIASES.pages,h)){notes.push(["alias",ta("nPage",h,ALIASES.pages[h])]);h=ALIASES.pages[h]}
+ const known=["home",...SECS,"privacy","links",...Object.keys(PAGES),...Object.keys(SV).map(k=>"svc-"+k)];
+ if(!known.includes(h)){notes.push(["drop",ta("nUnkPage",h)]);h="home"}
+ const out={page:h,sel:{svc:[],role:[],ind:[],env:[],brand:[]},view:"cards",open:[],lang:"",ref:"",notes,hasQuery:!!q};
+ new URLSearchParams(q).forEach((v,k0)=>{const k=ALIASES.params[k0]||k0;if(k!==k0)notes.push(["alias",ta("nParam",k0,k)]);
+  if(!LPARAMS.includes(k)){notes.push(["drop",ta("nUnkParam",k0)]);return}
+  if(k==="ref"){out.ref=bslug(v).slice(0,40);return}
+  if(k==="lang"){if(LANGS.includes(v))out.lang=v;else notes.push(["drop",ta("nLang",v)]);return}
+  if(k==="view"){if(v==="timeline"||v==="cards")out.view=v;else notes.push(["drop",ta("nView",v)]);return}
+  v.split(",").filter(Boolean).forEach(x=>{let y=x;
+   if(Object.prototype.hasOwnProperty.call(ALIASES[k]||{},x)){y=ALIASES[k][x];notes.push([y===null?"drop":"alias",`${k}=${x} → ${y===null?ta("nRemoved"):y}`]);if(y===null)return}
+   if(k==="open"){if(D.some(d=>d.id===y))out.open.push(y);else notes.push(["drop",ta("nEng",y)]);return}
+   const g=GROUPS.find(g=>g.k===k);if(gKeys(g).includes(y)){if(!out.sel[k].includes(y))out.sel[k].push(y)}else notes.push(["drop",ta("nGone",k+"="+y)])})});
+ return out}
+function buildHash(page,o){const p=new URLSearchParams();
+ ["svc","role","ind","env","brand"].forEach(k=>{if(o.sel[k].length)p.set(k,o.sel[k].join(","))});
+ if(o.view==="timeline")p.set("view","timeline");if(o.open.length)p.set("open",o.open.join(","));
+ if(o.lang&&o.lang!=="cs")p.set("lang",o.lang);if(o.ref)p.set("ref",o.ref);
+ const q=[...p.entries()].map(([k,v])=>`~${k}.${v.replace(/,/g,"_")}`).join("");return `#${page}${q}`}
+function stateLink(){return {sel:Object.fromEntries(["svc","role","ind","env","brand"].map(k=>[k,k==="brand"?[...st.brand].map(bslug):[...st[k]]])),view:st.view,open:[...st.open],lang:st.lang,ref:st.ref}}
+let URLSYNC=false; /* enabled by the first route() */
+function syncUrl(){if(!URLSYNC||!$("#pg-sub").hidden)return;const cur=CURHASH.slice(1).split("?")[0];
+ const o=stateLink(),busy=GROUPS.some(g=>st[g.k].size)||o.open.length||o.view!=="cards";
+ const page=busy?"experience":(SECS.includes(cur)?cur:"home");const nh=buildHash(page,o);
+ if(CURHASH!==nh)setHash(nh);showCur()}
+function applyLink(o){GROUPS.forEach(g=>st[g.k].clear());["svc","role","ind","env"].forEach(k=>o.sel[k].forEach(v=>st[k].add(v)));
+ o.sel.brand.forEach(sl=>{const n=brandBySlug(sl);if(n)st.brand.add(n)});st.view=o.view;st.open=new Set(o.open);st.panel=null;
+ if(o.lang&&o.lang!==st.lang){st.lang=o.lang;i18nStatic();renderServices();renderCases();renderSitemap()}}
+/* internal page: link builder + checker */
+function pageLinks(){const base=shareBase();
+ return `<a class="back" href="#home">${esc(t("back"))}</a><span class="eyebrow">${esc(ta("intern"))}</span><h1>${esc(ta("lkT"))}</h1>
+ <p class="lead">${esc(ta("lkLead"))}</p>
+ <div class="lk"><h2>${esc(ta("lkH1"))}</h2>
+ <label>${esc(ta("lkUrl"))}<input id="lkUrl" value="${esc(base)}#experience"></label>
+ <label>${esc(ta("lkRef"))}<input id="lkRef" placeholder="virtotech" maxlength="40"></label>
+ <button type="button" class="btn" id="lkMake">${esc(ta("lkMake"))}</button>
+ <div id="lkOut" class="lk-out" hidden></div></div>
+ <div class="lk"><h2>${esc(ta("lkH2"))}</h2>
+ <label>${esc(ta("lkIn"))}<textarea id="lkIn" rows="6">${esc(base)}#exps-dpm
+${esc(base)}#experience?ind=it,ai&open=Z20,Z10&ref=test
+${esc(base)}#experience~svc.dpm~ind.it
+${esc(base)}#eng-ebay</textarea></label>
+ <button type="button" class="btn" id="lkCheck">${esc(ta("lkCheck"))}</button>
+ <div id="lkRes"></div></div>
+ <div class="lk"><h2>${esc(ta("lkAl"))}</h2><pre class="lk-pre">${esc(JSON.stringify(ALIASES,null,1))}</pre></div>`}
+function wireLinks(){const base=shareBase();
+ $("#lkMake").onclick=()=>{const raw=$("#lkUrl").value.trim(),ref=bslug($("#lkRef").value.trim());const o=parseLink(raw.includes("#")?raw.split("#")[1]:"home");if(ref)o.ref=ref;
+  const url=base+buildHash(o.page,o),today=new Date().toISOString().slice(0,10);
+  $("#lkOut").hidden=false;$("#lkOut").innerHTML=`<div class="k">${esc(ta("lkOut1"))}</div><code>${esc(url)}</code><div class="k">${esc(ta("lkOut2"))}</div><code>${esc(`${today},${ref||"-"},"${url}"`)}</code>`};
+ $("#lkCheck").onclick=()=>{const rows=$("#lkIn").value.split("\n").map(x=>x.trim()).filter(Boolean).map(line=>{const m=line.match(/https?:\/\/\S+|#\S+/);const raw=m?m[0].replace(/"$/,""):line;
+   const o=parseLink(raw.includes("#")?raw.split("#")[1]:"home");const now=base+buildHash(o.page,o);
+   const st2=o.notes.some(n=>n[0]==="drop")?["drop",ta("stDrop")]:o.notes.length?["alias",ta("stAlias")]:["ok",ta("stOk")];
+   return `<tr><td><span class="lk-st ${st2[0]}">${st2[1]}</span></td><td><code>${esc(raw.replace(base,""))}</code></td><td><code>${esc(now.replace(base,""))}</code></td><td>${o.notes.map(n=>esc(n[1])).join("<br>")||"–"}</td></tr>`});
+  $("#lkRes").innerHTML=`<div class="lk-tw"><table class="lk-t"><thead><tr><th>${esc(ta("thSt"))}</th><th>${esc(ta("thLink"))}</th><th>${esc(ta("thNow"))}</th><th>${esc(ta("thNotes"))}</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`};}
+function route(keepLang){if(keepLang!==true)keepLang=false;let h=location.hash.slice(1);CURHASH=location.hash||"#home";let sub=null;
+ if(h==="internal"||h==="public"){setInternal(h==="internal");setHash("#home");h="home"}
+ const L=parseLink(h);if(L.ref)st.ref=L.ref;let pg=L.page;if(pg==="links"&&!INTERNAL)pg="home";
+ if(!keepLang&&L.lang&&L.lang!==st.lang){st.lang=L.lang;i18nStatic();renderServices();renderCases();renderSitemap()}
+ if(/^svc-(dpm|pmpo|at|sm)$/.test(pg))sub=pageService(pg.slice(4));
+ else if(PAGES[pg])sub=pageCase(pg);
+ else if(pg==="privacy")sub=pagePrivacy();
+ else if(pg==="links")sub=pageLinks();
+ $("#pg-home").hidden=!!sub;$("#pg-sub").hidden=!sub;
+ if(sub){$("#subWrap").innerHTML=sub;if(pg==="links")wireLinks();window.scrollTo(0,0);setActive(pg.startsWith("svc-")?"services":pg.startsWith("case-")?"cases":"");
+  const nh=buildHash(pg,{sel:{svc:[],role:[],ind:[],env:[],brand:[]},view:"cards",open:[],lang:st.lang,ref:st.ref});if(CURHASH!==nh)setHash(nh);URLSYNC=true;showCur();return}
+ URLSYNC=false;if(L.hasQuery||L.notes.length){applyLink(L);renderExp()}URLSYNC=true;
+ const busy=GROUPS.some(g=>st[g.k].size)||st.open.size||st.view!=="cards";
+ const sec=SECS.includes(pg)?pg:(L.hasQuery&&busy?"experience":"home");
+ const nh=buildHash(sec,stateLink());if(CURHASH!==nh)setHash(nh);
+ const one=st.open.size===1?$("#c-"+[...st.open][0]):null;
+ if(one&&L.hasQuery){one.scrollIntoView({block:"start"});one.classList.add("flash");setTimeout(()=>one.classList.remove("flash"),1600)}
+ else if(sec!=="home"){const el=document.getElementById(sec);if(el)el.scrollIntoView()}
+ else window.scrollTo(0,0);
+ showCur();}
+function renderSitemap(){const i=li();const G=[
+  [t("smHome"),[["home",t("home")],["services",t("navSvc")],["experience",t("navExp")],["cases",t("navCases")],["contact",t("navContact")]]],
+  [t("navSvc"),Object.keys(SV).map(k=>["svc-"+k,SV[k].name[i]])],
+  [t("navCases"),CASES.map(k=>[k,PAGES[k].title[i]])],
+  [t("smLegal"),[["privacy",t("privT")],["#ck",t("ckFoot")]]]];
+ $("#sitemap").innerHTML=G.map(([g,items])=>`<div class="grp"><b>${esc(g)}</b>${items.map(([h,n])=>h==="#ck"?`<button type="button" class="ck-open">${esc(n)}</button>`:`<a href="#${h}">${esc(n)}</a>`).join("")}</div>`).join("");
+ document.querySelectorAll(".ck-open").forEach(b=>b.onclick=()=>openCk(true))}
+function setActive(id){if(id&&$("#pg-sub").hidden&&URLSYNC){const nh=buildHash(id,stateLink());if(CURHASH!==nh){setHash(nh);showCur()}}
+document.querySelectorAll("nav.main a").forEach(a=>a.classList.toggle("active",a.getAttribute("href")==="#"+id))}
+function spy(){if(!$("#pg-sub").hidden)return;let cur="";SECS.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<=130)cur=id});
+ const c=document.getElementById("contact"),atEnd=window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-4;if(atEnd&&c.getBoundingClientRect().top<window.innerHeight/2)cur="contact";setActive(cur)}
+window.addEventListener("scroll",spy,{passive:true});window.addEventListener("resize",spy);
+function renderAll(){i18nStatic();renderServices();renderCases();renderSitemap();renderExp();route();spy()}
+document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>{st.lang=b.dataset.lang;try{localStorage.setItem("h42lang",st.lang)}catch(e){}
+ const sub=!$("#pg-sub").hidden;i18nStatic();renderServices();renderCases();renderSitemap();renderExp();if(sub)route(true)});
+document.addEventListener("click",e=>{if(!e.target.isConnected)return;if(st.panel&&!e.target.closest("#fbarWrap")){st.panel=null;renderExp()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&st.panel){st.panel=null;renderExp()}});
+$("#cform").addEventListener("submit",e=>{e.preventDefault();const f=e.target,ok=f.name.value.trim()&&/\S+@\S+\.\S+/.test(f.email.value)&&f.message.value.trim(),n=$("#fnote");n.hidden=false;n.textContent=ok?t("fOk"):t("fErr")});
+window.addEventListener("hashchange",()=>{if(IGNH&&location.hash===IGNH){IGNH=null;return}IGNH=null;route()});
+setInternal(true); /* prototype: admin tools live in the Admin panel */
+function setAdm(open){const p=$("#admPanel"),b=$("#admBtn");p.hidden=!open;b.setAttribute("aria-expanded",open);b.textContent=open?ta("close"):ta("open");try{localStorage.setItem("h42adm",open?"1":"0")}catch(e){}}
+let admOpen=false;try{admOpen=localStorage.getItem("h42adm")==="1"}catch(e){}
+setAdm(admOpen);$("#admBtn").onclick=()=>setAdm($("#admPanel").hidden);
+function ckOffset(){const shown=!$("#ck").hidden;document.documentElement.classList.toggle("ck-shown",shown);if(shown)document.documentElement.style.setProperty("--ckh",$("#ckBox").offsetHeight+"px")}
+$("#lkCopy").onclick=async()=>{const i=$("#lkCur"),b=$("#lkCopy");let ok=false;try{await navigator.clipboard.writeText(i.value);ok=true}catch(e){}
+ if(!ok){i.focus();i.select();try{ok=document.execCommand("copy")}catch(e){}}
+ b.textContent=ok?ta("copied"):ta("selected");setTimeout(()=>b.textContent=ta("copy"),1800)};
+/* Czech texts can be overridden from texty-cs.js (window.TX_CS) for local editing */
+function applyCS(X){if(!X)return;const set=(arr,v)=>{if(Array.isArray(arr)&&v!==undefined)arr[0]=v};
+ Object.assign(T.cs,X.ui||{});Object.assign(LG.cs,X.legal||{});
+ Object.entries(X.taxonomy||{}).forEach(([g,o])=>Object.entries(o).forEach(([k,v])=>{if(L[g]&&L[g][k])L[g][k][0]=v}));
+ Object.entries(X.services||{}).forEach(([k,o])=>{const sv=SV[k];if(!sv)return;["name","text","who","out"].forEach(f=>set(sv[f],o[f]))});
+ Object.entries(X.engagements||{}).forEach(([id,o])=>{const d=D.find(x=>x.id===id);if(!d)return;["role","sum","det","brandL"].forEach(f=>set(d[f],o[f]))});
+ Object.entries(X.cases||{}).forEach(([k,o])=>{const p=PAGES[k];if(!p)return;["title","ctx","ch","did","res"].forEach(f=>set(p[f],o[f]));
+  (o.kpis||[]).forEach((kv,n)=>{if(p.kpis[n]){p.kpis[n][0]=kv[0];p.kpis[n][1]=kv[1]}})});}
+applyCS(window.TX_CS);
+/* fine-tune: centre the photo between the cap top of the first headline line and the baseline of the last line */
+function centerHero(){const h=document.querySelector(".hero h1"),im=document.querySelector(".hero img");if(!h||!im)return;
+ document.documentElement.style.setProperty("--h1shift","0px");
+ if(getComputedStyle(h).gridRowStart!=="2"||!h.firstChild)return;
+ const r=document.createRange();r.selectNodeContents(h);const rs=[...r.getClientRects()];if(!rs.length)return;
+ const fs=parseFloat(getComputedStyle(h).fontSize),first=rs[0],last=rs[rs.length-1];
+ const capTop=first.top+(first.height-fs)/2+fs*0.21, base=last.top+(last.height-fs)/2+fs*0.93;
+ const ib=im.getBoundingClientRect(),want=(capTop+base)/2-(ib.top+ib.height/2);
+ document.documentElement.style.setProperty("--h1shift",Math.round(want)+"px")}
+window.addEventListener("resize",centerHero);if(document.fonts)document.fonts.ready.then(centerHero);
+/* layout variant switcher (internal only) */
+const LV=[["0","Současný"],["1","Tmavý úvod"],["2","Na střed"],["3","Velká fotka"],["4","Minimal"]];let lv="0";
+try{const v=localStorage.getItem("h42lv");if(LV.some(x=>x[0]===v))lv=v}catch(e){}
+function setLv(v){lv=v;try{requestAnimationFrame(centerHero)}catch(e){}LV.forEach(([k])=>document.documentElement.classList.toggle("lv"+k,k===v&&k!=="0"));try{localStorage.setItem("h42lv",v)}catch(e){}
+ $("#lvsw").innerHTML=LV.map(([k])=>{const n=ta("lv")[+k];return `<button type="button" data-lv="${k}" aria-pressed="${k===v}" title="${n}">V${k} ${n}</button>`}).join("");
+ $("#lvsw").querySelectorAll("button").forEach(b=>b.onclick=()=>{setLv(b.dataset.lv);if(!$("#pg-sub").hidden)location.hash="home"})}
+setLv(lv);
+renderAll();centerHero();
+if(!ck)openCk(false);ckOffset();window.addEventListener("resize",ckOffset);
+</script>
+
+</body></html>
